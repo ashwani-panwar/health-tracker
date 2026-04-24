@@ -1285,21 +1285,21 @@
           </div>
         </div>
         <div class="divider"></div>
-        <!-- Gemini API Key for photo food detection + body OCR -->
+        <!-- Groq API Key for photo food detection + body OCR -->
         <div id="apiKeySection">
           <div class="toggle-row" style="margin-bottom:4px">
-            <div class="toggle-label">Gemini API Key <span style="font-size:8px;color:var(--accent)">(FREE — food photos + body scan)</span></div>
+            <div class="toggle-label">Groq API Key <span style="font-size:8px;color:var(--accent)">(FREE — food photos + body scan)</span></div>
           </div>
           <div id="apiKeyStatus" style="font-size:9px;margin-bottom:6px;padding:5px 8px;border-radius:6px;display:none"></div>
           <div class="input-row" style="margin-bottom:4px">
-            <input class="input-field" id="apiKeyInput" type="password" placeholder="AIza..." style="font-size:11px" />
+            <input class="input-field" id="apiKeyInput" type="password" placeholder="gsk_..." style="font-size:11px" />
             <button class="btn btn-primary" onclick="saveApiKey()" style="white-space:nowrap;font-size:11px">SAVE</button>
           </div>
-          <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;font-size:11px" onclick="testGeminiKey()">🔬 Test Gemini Key</button>
-          <div id="geminiTestResult" style="display:none;font-size:10px;padding:8px;border-radius:6px;margin-bottom:6px"></div>
+          <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;font-size:11px" onclick="testGroqKey()">🔬 Test Groq Key</button>
+          <div id="groqTestResult" style="display:none;font-size:10px;padding:8px;border-radius:6px;margin-bottom:6px"></div>
           <div style="font-size:9px;color:var(--text3);line-height:1.6">
-            🆓 <strong style="color:var(--accent)">100% Free</strong> — Get key at <strong>aistudio.google.com</strong> → "Get API Key"<br/>
-            Enables: food photo detection + full body scale reading (all 14 params).<br/>
+            🆓 <strong style="color:var(--accent)">100% Free</strong> — Get key at <strong>console.groq.com</strong> → API Keys → Create<br/>
+            No billing needed. 14,400 free requests/day. Llama 4 vision model.<br/>
             Key stored locally on your device only, never sent anywhere else.
           </div>
         </div>
@@ -2109,141 +2109,74 @@ function clearAllData() {
 
 function saveApiKey() {
   const key = document.getElementById('apiKeyInput').value.trim();
-  if (!key) { showToast('Enter a Gemini API key'); return; }
-  if (!key.startsWith('AIza')) { showToast('Invalid key — Gemini keys start with AIza'); return; }
+  if (!key) { showToast('Enter a Groq API key'); return; }
+  if (!key.startsWith('gsk_')) { showToast('Invalid key — Groq keys start with gsk_'); return; }
   if (!S.settings) S.settings = defaultState().settings;
-  S.settings.geminiApiKey = key;
+  S.settings.groqApiKey = key;
   save(S);
   document.getElementById('apiKeyInput').value = '';
   renderApiKeyStatus();
-  showToast('Gemini key saved ✓ Photo detection enabled!');
+  showToast('Groq key saved ✓ Photo detection enabled!');
 }
 
-async function testGeminiKey() {
-  const key = getGeminiKey();
-  const resultEl = document.getElementById('geminiTestResult');
+async function testGroqKey() {
+  const key = getGroqKey();
+  const resultEl = document.getElementById('groqTestResult');
   resultEl.style.display = 'block';
 
   if (!key) {
     resultEl.style.background = 'rgba(255,68,102,0.1)';
     resultEl.style.color = 'var(--red)';
-    resultEl.textContent = '✗ No key saved. Enter your Gemini API key above first.';
+    resultEl.textContent = '✗ No key saved. Enter your Groq API key above first.';
     return;
   }
 
   resultEl.style.background = 'var(--surface2)';
   resultEl.style.color = 'var(--text2)';
-  resultEl.textContent = '⏳ Testing key against all Gemini models...';
+  resultEl.textContent = '⏳ Testing Groq key...';
 
-  const MODELS = [
-    // Paid / Tier 1 accounts (versioned model names)
-    { ver: 'v1beta', name: 'gemini-2.0-flash-001' },
-    { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },       // 1500/day free
-    { ver: 'v1beta', name: 'gemini-2.5-flash-preview-04-17' },
-    { ver: 'v1beta', name: 'gemini-1.5-flash-002' },
-    { ver: 'v1beta', name: 'gemini-1.5-flash-001' },
-    // Free tier / latest aliases
-    { ver: 'v1beta', name: 'gemini-2.0-flash' },
-    { ver: 'v1beta', name: 'gemini-2.0-flash-latest' },
-    { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
-    { ver: 'v1beta', name: 'gemini-1.5-flash' },
-    { ver: 'v1',     name: 'gemini-1.5-flash-latest' },
-    { ver: 'v1',     name: 'gemini-1.5-flash' },
-  ];
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        messages: [{ role: 'user', content: 'Reply with just: OK' }],
+        max_tokens: 5
+      })
+    });
 
-  const results = [];
-  for (const { ver, name } of MODELS) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/${ver}/models/${name}:generateContent?key=${key}`;
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Reply with just the word: OK' }] }],
-          generationConfig: { maxOutputTokens: 5 }
-        })
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (resp.ok && data?.candidates?.[0]?.content) {
-        results.push(`✓ ${ver}/${name}`);
-      } else {
-        const msg = data?.error?.message || `HTTP ${resp.status}`;
-        // Detect specific error types
-        let hint = '';
-        if (resp.status === 403 || msg.includes('API_KEY_INVALID')) hint = ' [BAD KEY]';
-        else if (msg.includes('not enabled') || msg.includes('SERVICE_DISABLED')) hint = ' [API NOT ENABLED]';
-        else if (msg.includes('not found') || resp.status === 404) hint = ' [MODEL NOT FOUND]';
-        else if (msg.includes('RESOURCE_EXHAUSTED') || resp.status === 429) hint = ' [QUOTA FULL — resets tomorrow]';
-        results.push(`✗ ${ver}/${name}${hint}: ${msg.slice(0,55)}`);
-        // If API not enabled or bad key, no point trying other models
-        if (msg.includes('not enabled') || msg.includes('SERVICE_DISABLED')) break;
-        if (resp.status === 403 && msg.includes('API_KEY_INVALID')) break;
-      }
-    } catch(e) {
-      results.push(`✗ ${ver}/${name}: ${e.message.slice(0,40)}`);
-    }
-  }
-
-  const anyWorked = results.some(r => r.startsWith('✓'));
-  const apiNotEnabled = results.some(r => r.includes('API NOT ENABLED') || r.includes('SERVICE_DISABLED'));
-  const badKey = results.some(r => r.includes('BAD KEY') || r.includes('API_KEY_INVALID'));
-  const modelNotFound = results.every(r => r.includes('MODEL NOT FOUND') || r.includes('not found'));
-  const quotaFull = results.some(r => r.includes('QUOTA FULL')) && !anyWorked;
-
-  // Auto-save first working model so app uses it directly next time
-  if (anyWorked) {
-    const winIdx = results.findIndex(r => r.startsWith('✓'));
-    if (winIdx >= 0 && MODELS[winIdx]) {
-      S.settings.geminiWorkingModel = MODELS[winIdx];
+    const data = await resp.json().catch(() => ({}));
+    if (resp.ok && data?.choices?.[0]?.message) {
+      S.settings.groqWorkingModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
       save(S);
       renderApiKeyStatus();
+      resultEl.style.background = 'rgba(200,255,0,0.08)';
+      resultEl.style.color = 'var(--accent)';
+      resultEl.innerHTML = `<div>✓ Groq key valid! Llama 4 Scout vision ready.</div>
+        <div style="font-size:9px;color:var(--text3);margin-top:4px">14,400 free requests/day — food photos + body scan enabled.</div>`;
+    } else {
+      const msg = data?.error?.message || `HTTP ${resp.status}`;
+      resultEl.style.background = 'rgba(255,68,102,0.1)';
+      resultEl.style.color = 'var(--red)';
+      resultEl.innerHTML = `<div>✗ ${msg}</div>
+        <div style="margin-top:6px;font-size:9px">Get a free key at <strong>console.groq.com</strong> → API Keys → Create API Key</div>`;
     }
+  } catch(e) {
+    resultEl.style.background = 'rgba(255,68,102,0.1)';
+    resultEl.style.color = 'var(--red)';
+    resultEl.textContent = `✗ Network error: ${e.message}`;
   }
-
-  resultEl.style.background = anyWorked ? 'rgba(200,255,0,0.08)' : 'rgba(255,68,102,0.1)';
-  resultEl.style.color = anyWorked ? 'var(--accent)' : 'var(--red)';
-
-  let fixMsg = '';
-  if (quotaFull) {
-    fixMsg = `<div style="margin-top:8px;color:var(--yellow);font-size:10px;line-height:1.6">
-      ⚠ <strong>Daily quota exceeded on working models.</strong><br/>
-      Your key IS valid — quota resets at midnight Pacific time.<br/>
-      Try again tomorrow, or go to <strong>aistudio.google.com</strong> and create a fresh API key on a new project to get a clean quota.
-    </div>`;
-  } else if (apiNotEnabled) {
-    fixMsg = `<div style="margin-top:8px;color:var(--yellow);font-size:10px;line-height:1.6">
-      ⚠ <strong>Gemini API not enabled on your project.</strong><br/>
-      Fix: Go to <strong>console.cloud.google.com</strong><br/>
-      → APIs & Services → Enable APIs<br/>
-      → Search "Generative Language API" → Enable
-    </div>`;
-  } else if (badKey) {
-    fixMsg = `<div style="margin-top:8px;color:var(--red);font-size:10px">✗ Invalid API key. Generate a new one at aistudio.google.com</div>`;
-  } else if (modelNotFound) {
-    fixMsg = `<div style="margin-top:8px;color:var(--yellow);font-size:10px;line-height:1.6">
-      ⚠ <strong>No models available.</strong> Your project may need Gemini API enabled.<br/>
-      Go to <strong>console.cloud.google.com → APIs & Services → Enable APIs<br/>
-      → Search "Generative Language API" → Enable</strong>
-    </div>`;
-  } else if (!anyWorked) {
-    fixMsg = `<div style="margin-top:8px;color:var(--red);font-size:10px">✗ No working model found. Try a new key from aistudio.google.com</div>`;
-  }
-
-  resultEl.innerHTML = results.map(r =>
-    `<div style="margin-bottom:2px;font-size:9px;color:${r.startsWith('✓') ? 'var(--accent)' : 'var(--text3)'}">${r}</div>`
-  ).join('') + (anyWorked
-    ? `<div style="margin-top:6px;color:var(--accent)">✓ Key valid! Working model saved — photo features ready.</div>`
-    : fixMsg
-  );
 }
 
 async function forceRefreshApp() {
   showToast('Clearing cache and refreshing...');
   try {
-    // Unregister all service workers
     const regs = await navigator.serviceWorker.getRegistrations();
     await Promise.all(regs.map(r => r.unregister()));
-    // Delete all caches
     const keys = await caches.keys();
     await Promise.all(keys.map(k => caches.delete(k)));
     showToast('Cache cleared! Reloading...');
@@ -2256,21 +2189,17 @@ async function forceRefreshApp() {
 function renderApiKeyStatus() {
   const el = document.getElementById('apiKeyStatus');
   if (!el) return;
-  const key = S.settings && S.settings.geminiApiKey;
-  const model = S.settings && S.settings.geminiWorkingModel;
+  const key = S.settings && S.settings.groqApiKey;
   if (key) {
     el.style.display = 'block';
     el.style.background = 'rgba(200,255,0,0.08)';
     el.style.color = 'var(--accent)';
     el.style.border = '1px solid rgba(200,255,0,0.2)';
-    el.textContent = model
-      ? `✓ Gemini active — using ${model.name}`
-      : '✓ Gemini key active — tap Test to find working model';
+    el.textContent = '✓ Groq key active — Llama 4 vision ready';
   } else {
     el.style.display = 'none';
   }
 }
-
 // ═══════════════════════════════════════════
 //  TOAST
 // ═══════════════════════════════════════════
@@ -2438,9 +2367,9 @@ async function scanBodyScreenshot(input) {
   el.style.display = 'block';
 
   // ── GEMINI PATH (preferred — reads all 14+ params perfectly) ──
-  if (getGeminiKey()) {
+  if (getGroqKey()) {
     el.innerHTML = `<div class="ocr-progress">
-      <div style="font-size:11px;color:var(--text2)">🔍 Gemini reading scale screenshot...</div>
+      <div style="font-size:11px;color:var(--text2)">🔍 Groq reading scale screenshot...</div>
       <div class="ocr-bar"><div class="ocr-bar-fill" style="width:30%;transition:width 2s"></div></div>
       <div style="font-size:9px;color:var(--text3);margin-top:4px">Extracting all body metrics...</div>
     </div>`;
@@ -2468,12 +2397,12 @@ Reply ONLY as JSON object with these exact keys (use null if not visible):
 }
 Read the MAIN large numbers, NOT the small delta/change values (the small grey numbers).`;
 
-      const text = await callGeminiVision(file, prompt);
+      const text = await callGroqVision(file, prompt);
       const jsonMatch = text.match(/\{[\s\S]*?\}/);
       if (!jsonMatch) throw new Error('No JSON');
 
       const d = JSON.parse(jsonMatch[0]);
-      renderBodyOcrResult(d, el, 'Gemini Vision');
+      renderBodyOcrResult(d, el, 'Groq Vision');
       return;
     } catch(e) {
       // Fall through to OCR
@@ -2486,7 +2415,7 @@ Read the MAIN large numbers, NOT the small delta/change values (the small grey n
     const d = window.OCREngine.parseBody(result.rawText);
     const hasData = d.weight || d.bodyFat || d.muscleMass || d.visceralFat || d.subcutaneousFat || d.proteinPct || d.leanMass || d.bmr;
     if (!hasData) {
-      el.innerHTML = `<div class="insight-box">⚠ Couldn't extract data. Add a <a href="#" onclick="showApiKeyPrompt();return false;" style="color:var(--accent)">free Gemini key</a> in Settings for accurate reading.<br/><small style="color:var(--text3);font-size:9px">Raw: ${result.rawText.slice(0,200)}</small></div>`;
+      el.innerHTML = `<div class="insight-box">⚠ Couldn't extract data. Add a <a href="#" onclick="showApiKeyPrompt();return false;" style="color:var(--accent)">free Groq key</a> in Settings for accurate reading.<br/><small style="color:var(--text3);font-size:9px">Raw: ${result.rawText.slice(0,200)}</small></div>`;
       return;
     }
     renderBodyOcrResult(d, el, 'OCR');
@@ -2515,7 +2444,7 @@ function renderBodyOcrResult(d, el, method) {
 
   const count = fields.length;
   if (!count) {
-    el.innerHTML = `<div class="insight-box">⚠ No data extracted. Try Gemini Vision — add free key in History → Settings.</div>`;
+    el.innerHTML = `<div class="insight-box">⚠ No data extracted. Try Groq Vision — add free key in History → Settings.</div>`;
     return;
   }
 
@@ -2527,7 +2456,7 @@ function renderBodyOcrResult(d, el, method) {
   html += `</div>
   <button class="btn btn-primary" style="width:100%;margin-top:8px"
     onclick='applyBodyOcr(${JSON.stringify(d).replace(/'/g,"&#39;")})'>✓ Save All ${count} Metrics</button>
-  ${count < 10 && !getGeminiKey() ? `<div style="font-size:9px;color:var(--accent3);margin-top:5px">💡 Add Gemini key in Settings to extract all 14 params</div>` : ''}`;
+  ${count < 10 && !getGroqKey() ? `<div style="font-size:9px;color:var(--accent3);margin-top:5px">💡 Add Groq key in Settings to extract all 14 params</div>` : ''}`;
   el.innerHTML = html;
 }
 
@@ -2600,86 +2529,47 @@ function logLabelFood(d) {
 //  Used by: food photo + body scale scan
 // ═══════════════════════════════════════════
 
-function getGeminiKey() {
-  return S.settings && S.settings.geminiApiKey;
+function getGroqKey() {
+  return S.settings && S.settings.groqApiKey;
 }
 
-async function callGeminiVision(file, prompt) {
-  const key = getGeminiKey();
+// ─── GROQ VISION — shared helper ───
+// Uses Llama 4 Scout vision model via Groq API
+// Free tier: 14,400 requests/day, no billing needed
+async function callGroqVision(file, prompt) {
+  const key = getGroqKey();
   if (!key) throw new Error('NO_KEY');
 
   const b64 = await fileToBase64(file);
   const mimeType = file.type || 'image/jpeg';
 
-  // Try models in order — different API keys may have access to different models
-  const GEMINI_MODELS = [
-    // Paid / Tier 1 accounts (explicit version numbers)
-    { ver: 'v1beta', name: 'gemini-2.0-flash-001' },
-    { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },       // 1500/day free
-    { ver: 'v1beta', name: 'gemini-2.5-flash-preview-04-17' },
-    { ver: 'v1beta', name: 'gemini-1.5-flash-002' },
-    { ver: 'v1beta', name: 'gemini-1.5-flash-001' },
-    // Free tier / latest aliases
-    { ver: 'v1beta', name: 'gemini-2.0-flash' },
-    { ver: 'v1beta', name: 'gemini-2.0-flash-latest' },
-    { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
-    { ver: 'v1beta', name: 'gemini-1.5-flash' },
-    { ver: 'v1',     name: 'gemini-1.5-flash-latest' },
-    { ver: 'v1',     name: 'gemini-1.5-flash' },
-  ];
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${b64}` } },
+          { type: 'text', text: prompt }
+        ]
+      }],
+      temperature: 0.1,
+      max_tokens: 800
+    })
+  });
 
-  const body = {
-    contents: [{
-      parts: [
-        { inline_data: { mime_type: mimeType, data: b64 } },
-        { text: prompt }
-      ]
-    }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 800 }
-  };
-
-  let lastError = 'No model worked';
-
-  // Use cached working model first if available
-  const cachedModel = S.settings && S.settings.geminiWorkingModel;
-  const orderedModels = cachedModel
-    ? [cachedModel, ...GEMINI_MODELS.filter(m => m.name !== cachedModel.name)]
-    : GEMINI_MODELS;
-
-  for (const { ver, name } of orderedModels) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/${ver}/models/${name}:generateContent?key=${key}`;
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        lastError = err?.error?.message || `HTTP ${resp.status}`;
-        // Bad key = stop immediately. Quota/not-found = try next model.
-        if (resp.status === 403 && lastError.includes('API_KEY_INVALID')) break;
-        if (resp.status === 400) break;
-        continue; // 404 (not found) or 429 (quota) → try next model
-      }
-
-      const data = await resp.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        // Cache the working model for next time
-        if (!S.settings.geminiWorkingModel || S.settings.geminiWorkingModel.name !== name) {
-          S.settings.geminiWorkingModel = { ver, name };
-          save(S);
-        }
-        return text;
-      }
-      lastError = 'Empty response';
-    } catch (e) {
-      lastError = e.message;
-    }
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
   }
-  throw new Error(lastError);
+
+  const data = await resp.json();
+  return data?.choices?.[0]?.message?.content || '';
 }
 
 function fileToBase64(file) {
@@ -2691,7 +2581,7 @@ function fileToBase64(file) {
   });
 }
 
-// ─── FOOD PHOTO ESTIMATION via Gemini ───
+// ─── FOOD PHOTO ESTIMATION via Groq ───
 async function estimateFoodFromPhoto(input) {
   if (!input.files[0]) return;
   const file = input.files[0];
@@ -2700,7 +2590,7 @@ async function estimateFoodFromPhoto(input) {
   el.innerHTML = `<div class="ocr-progress">
     <div style="font-size:11px;color:var(--text2)">🔍 Analysing food photo...</div>
     <div class="ocr-bar"><div class="ocr-bar-fill" id="photoBar" style="width:15%"></div></div>
-    <div style="font-size:9px;color:var(--text3);margin-top:4px" id="photoStatus">Sending to Gemini...</div>
+    <div style="font-size:9px;color:var(--text3);margin-top:4px" id="photoStatus">Sending to Groq...</div>
   </div>`;
 
   const setP = (pct, msg) => {
@@ -2710,32 +2600,32 @@ async function estimateFoodFromPhoto(input) {
     if (s) s.textContent = msg;
   };
 
-  if (!getGeminiKey()) {
+  if (!getGroqKey()) {
     el.innerHTML = showPhotoFallback();
     return;
   }
 
   try {
-    setP(30, 'Gemini analysing your meal...');
+    setP(30, 'Groq analysing your meal...');
     const prompt = `Look at this food photo carefully. Identify every food item visible.
 For each item estimate realistic portion size and nutrition.
 Reply ONLY with a JSON array, no other text:
 [{"food":"item name","portion":"e.g. 1 cup / 150g / 2 pieces","cal":number,"prot":number}]
 Use realistic values. Typical meal is 300-700 kcal total.`;
 
-    const text = await callGeminiVision(file, prompt);
+    const text = await callGroqVision(file, prompt);
     setP(90, 'Parsing results...');
 
     const jsonMatch = text.match(/\[[\s\S]*?\]/);
     if (!jsonMatch) throw new Error('No JSON in response');
     const items = JSON.parse(jsonMatch[0]);
-    showPhotoResult(items, el, 'Gemini 1.5 Flash');
+    showPhotoResult(items, el, 'Groq Llama 4');
 
   } catch(e) {
     if (e.message === 'NO_KEY') {
       el.innerHTML = showPhotoFallback();
     } else {
-      el.innerHTML = `<div class="insight-box">⚠ Gemini error: ${e.message}<br/><small style="color:var(--text3)">Check API key in History → Settings</small></div>`;
+      el.innerHTML = `<div class="insight-box">⚠ Groq error: ${e.message}<br/><small style="color:var(--text3)">Check API key in History → Settings</small></div>`;
     }
   }
 }
@@ -2765,11 +2655,11 @@ function showPhotoResult(items, el, method) {
 }
 
 function showPhotoFallback(hint) {
-  const hasKey = !!getGeminiKey();
+  const hasKey = !!getGroqKey();
   return `<div class="insight-box">
     ${hint ? `⚠ ${hint}<br/>` : ''}
     ${!hasKey
-      ? `📷 Add your <strong style="color:var(--accent)">free Gemini API key</strong> in History → Settings to enable food photo detection.<br/><small style="color:var(--text3)">Get it free at aistudio.google.com</small>`
+      ? `📷 Add your <strong style="color:var(--accent)">free Groq API key</strong> in History → Settings to enable food photo detection.<br/><small style="color:var(--text3)">Get it free at console.groq.com</small>`
       : `📷 Could not identify food. Try a clearer photo with good lighting.`}
     <br/>Or type your meal in the AI text estimator above.
   </div>`;
