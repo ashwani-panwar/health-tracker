@@ -2138,11 +2138,13 @@ async function testGeminiKey() {
   const MODELS = [
     // Paid / Tier 1 accounts (versioned model names)
     { ver: 'v1beta', name: 'gemini-2.0-flash-001' },
+    { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },       // 1500/day free
     { ver: 'v1beta', name: 'gemini-2.5-flash-preview-04-17' },
     { ver: 'v1beta', name: 'gemini-1.5-flash-002' },
     { ver: 'v1beta', name: 'gemini-1.5-flash-001' },
     // Free tier / latest aliases
     { ver: 'v1beta', name: 'gemini-2.0-flash' },
+    { ver: 'v1beta', name: 'gemini-2.0-flash-latest' },
     { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
     { ver: 'v1beta', name: 'gemini-1.5-flash' },
     { ver: 'v1',     name: 'gemini-1.5-flash-latest' },
@@ -2166,7 +2168,16 @@ async function testGeminiKey() {
         results.push(`✓ ${ver}/${name}`);
       } else {
         const msg = data?.error?.message || `HTTP ${resp.status}`;
-        results.push(`✗ ${ver}/${name}: ${msg.slice(0,60)}`);
+        // Detect specific error types
+        let hint = '';
+        if (resp.status === 403 || msg.includes('API_KEY_INVALID')) hint = ' [BAD KEY]';
+        else if (msg.includes('not enabled') || msg.includes('SERVICE_DISABLED')) hint = ' [API NOT ENABLED]';
+        else if (msg.includes('not found') || resp.status === 404) hint = ' [MODEL NOT FOUND]';
+        else if (msg.includes('RESOURCE_EXHAUSTED') || resp.status === 429) hint = ' [QUOTA FULL — resets tomorrow]';
+        results.push(`✗ ${ver}/${name}${hint}: ${msg.slice(0,55)}`);
+        // If API not enabled or bad key, no point trying other models
+        if (msg.includes('not enabled') || msg.includes('SERVICE_DISABLED')) break;
+        if (resp.status === 403 && msg.includes('API_KEY_INVALID')) break;
       }
     } catch(e) {
       results.push(`✗ ${ver}/${name}: ${e.message.slice(0,40)}`);
@@ -2174,6 +2185,10 @@ async function testGeminiKey() {
   }
 
   const anyWorked = results.some(r => r.startsWith('✓'));
+  const apiNotEnabled = results.some(r => r.includes('API NOT ENABLED') || r.includes('SERVICE_DISABLED'));
+  const badKey = results.some(r => r.includes('BAD KEY') || r.includes('API_KEY_INVALID'));
+  const modelNotFound = results.every(r => r.includes('MODEL NOT FOUND') || r.includes('not found'));
+  const quotaFull = results.some(r => r.includes('QUOTA FULL')) && !anyWorked;
 
   // Auto-save first working model so app uses it directly next time
   if (anyWorked) {
@@ -2187,11 +2202,38 @@ async function testGeminiKey() {
 
   resultEl.style.background = anyWorked ? 'rgba(200,255,0,0.08)' : 'rgba(255,68,102,0.1)';
   resultEl.style.color = anyWorked ? 'var(--accent)' : 'var(--red)';
+
+  let fixMsg = '';
+  if (quotaFull) {
+    fixMsg = `<div style="margin-top:8px;color:var(--yellow);font-size:10px;line-height:1.6">
+      ⚠ <strong>Daily quota exceeded on working models.</strong><br/>
+      Your key IS valid — quota resets at midnight Pacific time.<br/>
+      Try again tomorrow, or go to <strong>aistudio.google.com</strong> and create a fresh API key on a new project to get a clean quota.
+    </div>`;
+  } else if (apiNotEnabled) {
+    fixMsg = `<div style="margin-top:8px;color:var(--yellow);font-size:10px;line-height:1.6">
+      ⚠ <strong>Gemini API not enabled on your project.</strong><br/>
+      Fix: Go to <strong>console.cloud.google.com</strong><br/>
+      → APIs & Services → Enable APIs<br/>
+      → Search "Generative Language API" → Enable
+    </div>`;
+  } else if (badKey) {
+    fixMsg = `<div style="margin-top:8px;color:var(--red);font-size:10px">✗ Invalid API key. Generate a new one at aistudio.google.com</div>`;
+  } else if (modelNotFound) {
+    fixMsg = `<div style="margin-top:8px;color:var(--yellow);font-size:10px;line-height:1.6">
+      ⚠ <strong>No models available.</strong> Your project may need Gemini API enabled.<br/>
+      Go to <strong>console.cloud.google.com → APIs & Services → Enable APIs<br/>
+      → Search "Generative Language API" → Enable</strong>
+    </div>`;
+  } else if (!anyWorked) {
+    fixMsg = `<div style="margin-top:8px;color:var(--red);font-size:10px">✗ No working model found. Try a new key from aistudio.google.com</div>`;
+  }
+
   resultEl.innerHTML = results.map(r =>
-    `<div style="margin-bottom:2px;color:${r.startsWith('✓') ? 'var(--accent)' : 'var(--text3)'}">${r}</div>`
+    `<div style="margin-bottom:2px;font-size:9px;color:${r.startsWith('✓') ? 'var(--accent)' : 'var(--text3)'}">${r}</div>`
   ).join('') + (anyWorked
     ? `<div style="margin-top:6px;color:var(--accent)">✓ Key valid! Working model saved — photo features ready.</div>`
-    : '<div style="margin-top:6px;color:var(--red)">✗ Key has no access. Try generating a new key at aistudio.google.com</div>'
+    : fixMsg
   );
 }
 
@@ -2573,11 +2615,13 @@ async function callGeminiVision(file, prompt) {
   const GEMINI_MODELS = [
     // Paid / Tier 1 accounts (explicit version numbers)
     { ver: 'v1beta', name: 'gemini-2.0-flash-001' },
+    { ver: 'v1beta', name: 'gemini-2.0-flash-lite' },       // 1500/day free
     { ver: 'v1beta', name: 'gemini-2.5-flash-preview-04-17' },
     { ver: 'v1beta', name: 'gemini-1.5-flash-002' },
     { ver: 'v1beta', name: 'gemini-1.5-flash-001' },
     // Free tier / latest aliases
     { ver: 'v1beta', name: 'gemini-2.0-flash' },
+    { ver: 'v1beta', name: 'gemini-2.0-flash-latest' },
     { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
     { ver: 'v1beta', name: 'gemini-1.5-flash' },
     { ver: 'v1',     name: 'gemini-1.5-flash-latest' },
@@ -2614,8 +2658,10 @@ async function callGeminiVision(file, prompt) {
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         lastError = err?.error?.message || `HTTP ${resp.status}`;
-        if (resp.status === 400 || resp.status === 403) break;
-        continue;
+        // Bad key = stop immediately. Quota/not-found = try next model.
+        if (resp.status === 403 && lastError.includes('API_KEY_INVALID')) break;
+        if (resp.status === 400) break;
+        continue; // 404 (not found) or 429 (quota) → try next model
       }
 
       const data = await resp.json();
