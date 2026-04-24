@@ -1,8 +1,11 @@
-const CACHE = 'vitalcore-v2';
+const CACHE = 'vitalcore-v3';
 const ASSETS = [
   './',
   './index.html',
-  'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap'
+  './nutrition-db.js',
+  './ocr-engine.js',
+  'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap',
+  'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
 ];
 
 self.addEventListener('install', e => {
