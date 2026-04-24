@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VitalCore" />
+  <title>VitalCore — Health Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #18181f;
+      --border: #ffffff0f;
+      --border2: #ffffff18;
+      --accent: #c8ff00;
+      --accent2: #00ffc8;
+      --accent3: #ff6b35;
+      --text: #f0f0f5;
+      --text2: #8888aa;
+      --text3: #555570;
+      --red: #ff4466;
+      --yellow: #ffcc00;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      overflow-x: hidden;
+    }
+
+    /* NOISE TEXTURE */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.4;
+    }
+
+    /* LAYOUT */
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* HEADER */
+    .header {
+      padding: 52px 20px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span { color: var(--accent); }
+
+    .date-badge {
+      font-size: 10px;
+      color: var(--text3);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 20px;
+    }
+
+    /* NAV TABS */
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 0 20px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+
+    .nav-tab {
+      flex-shrink: 0;
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text3);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+      font-weight: 500;
+    }
+
+    /* SCROLL CONTENT */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 20px 120px;
+      scrollbar-width: none;
+    }
+    .content::-webkit-scrollbar { display: none; }
+
+    /* CARDS */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .card-label {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 10px;
+    }
+
+    /* SCORE RING */
+    .score-hero {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 20px 18px;
+    }
+
+    .ring-wrap {
+      position: relative;
+      width: 90px;
+      height: 90px;
+      flex-shrink: 0;
+    }
+
+    .ring-wrap svg {
+      transform: rotate(-90deg);
+    }
+
+    .ring-value {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ring-num {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 26px;
+      line-height: 1;
+      color: var(--accent);
+    }
+
+    .ring-label {
+      font-size: 8px;
+      color: var(--text3);
+      letter-spacing: 1px;
+    }
+
+    .score-details { flex: 1; }
+
+    .score-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .score-sub {
+      font-size: 10px;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+
+    /* MACROS ROW */
+    .macros-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .macro-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+    }
+
+    .macro-num {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .macro-unit {
+      font-size: 10px;
+      color: var(--text3);
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .macro-label {
+      font-size: 9px;
+      color: var(--text2);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    /* PROGRESS BAR */
+    .prog-bar {
+      height: 3px;
+      background: var(--border2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .prog-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* STREAK */
+    .streak-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .streak-num {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 42px;
+      color: var(--accent3);
+      line-height: 1;
+    }
+
+    .streak-info { flex: 1; }
+
+    .streak-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .streak-sub { font-size: 10px; color: var(--text2); }
+
+    /* BREAKDOWN GRID */
+    .breakdown-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .breakdown-item {
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 12px 10px;
+      text-align: center;
+    }
+
+    .breakdown-score {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .breakdown-max { font-size: 9px; color: var(--text3); }
+
+    .breakdown-label {
+      font-size: 8px;
+      color: var(--text2);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* LOG INPUT */
+    .log-section { margin-bottom: 20px; }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title span {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text3);
+      font-weight: 400;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .input-field {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus { border-color: var(--accent); }
+    .input-field::placeholder { color: var(--text3); }
+
+    .btn {
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      border: none;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .btn-primary:active { transform: scale(0.96); }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--red);
+      border: 1px solid var(--red)44;
+    }
+
+    .btn-score {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #000;
+      font-size: 14px;
+      border-radius: var(--radius);
+      margin-top: 4px;
+    }
+
+    /* MEALS LIST */
+    .meal-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .meal-item:last-child { border-bottom: none; }
+
+    .meal-name {
+      font-size: 12px;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .meal-macros {
+      font-size: 10px;
+      color: var(--text3);
+      text-align: right;
+      margin-right: 12px;
+    }
+
+    .meal-delete {
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+
+    .meal-delete:active { color: var(--red); }
+
+    /* CHIPS */
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 10px;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .chip:active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    /* ACTIVITY TOGGLES */
+    .step-presets {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .step-preset {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .step-preset.active {
+      border-color: var(--accent2);
+      background: rgba(0,255,200,0.08);
+    }
+
+    .step-preset-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .step-preset-label { font-size: 8px; color: var(--text3); margin-top: 2px; }
+
+    /* WORKOUT TOGGLE */
+    .workout-toggle {
+      display: flex;
+      gap: 8px;
+    }
+
+    .workout-btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text2);
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .workout-btn.active {
+      border-color: var(--accent3);
+      background: rgba(255,107,53,0.12);
+      color: var(--accent3);
+    }
+
+    /* HISTORY */
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-item:last-child { border-bottom: none; }
+
+    .history-date {
+      font-size: 9px;
+      color: var(--text3);
+      letter-spacing: 1px;
+      width: 56px;
+    }
+
+    .history-score-badge {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      width: 44px;
+      text-align: center;
+    }
+
+    .history-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .history-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+    }
+
+    .history-tag {
+      font-size: 8px;
+      letter-spacing: 1px;
+      padding: 3px 7px;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* BODY METRICS */
+    .body-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .body-metric {
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+    }
+
+    .body-metric-val {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+    }
+
+    .body-metric-unit { font-size: 10px; color: var(--text3); }
+
+    .body-metric-label {
+      font-size: 8px;
+      color: var(--text2);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--accent);
+      color: #000;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 10000;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* BOTTOM NAV */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 430px;
+      background: rgba(10,10,15,0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding: 8px 0 20px;
+      z-index: 1000;
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-icon {
+      font-size: 20px;
+      transition: transform 0.2s;
+    }
+
+    .nav-item.active .nav-icon { transform: scale(1.2); }
+
+    .nav-label {
+      font-size: 8px;
+      letter-spacing: 1px;
+      color: var(--text3);
+      text-transform: uppercase;
+    }
+
+    .nav-item.active .nav-label { color: var(--accent); }
+
+    /* PAGE */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* INSIGHT BOX */
+    .insight-box {
+      background: rgba(200,255,0,0.05);
+      border: 1px solid rgba(200,255,0,0.15);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-size: 11px;
+      color: var(--text2);
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+
+    .insight-box strong { color: var(--accent); }
+
+    /* NEW DAY BTN */
+    .new-day-btn {
+      width: 100%;
+      padding: 14px;
+      background: transparent;
+      border: 1px dashed var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text3);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 12px;
+    }
+
+    .new-day-btn:active {
+      border-color: var(--accent3);
+      color: var(--accent3);
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 12px 0;
+    }
+
+    /* Momentum bar */
+    .momentum-bar {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .mom-dot {
+      height: 6px;
+      flex: 1;
+      border-radius: 3px;
+      background: var(--border2);
+    }
+
+    .mom-dot.filled { background: var(--accent); }
+
+    /* Animated gradient accent border */
+    .accent-border {
+      border-image: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3)) 1;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 30px 20px;
+      color: var(--text3);
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .empty-icon { font-size: 32px; margin-bottom: 8px; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .pulse { animation: pulse 2s infinite; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in { animation: fadeIn 0.3s ease forwards; }
+
+    /* Switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+    }
+
+    .toggle-label { font-size: 12px; color: var(--text2); }
+
+    .toggle {
+      width: 40px;
+      height: 22px;
+      background: var(--border2);
+      border-radius: 11px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      border: none;
+      flex-shrink: 0;
+    }
+
+    .toggle.on { background: var(--accent); }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      top: 3px;
+      left: 3px;
+      transition: left 0.2s;
+    }
+
+    .toggle.on::after { left: 21px; }
+
+    /* Number input */
+    .num-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .num-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .num-display {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      min-width: 50px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">VITAL<span>CORE</span></div>
+    <div class="date-badge" id="dateBadge">--</div>
+  </div>
+
+  <!-- NAV TABS (top) -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('dashboard')">Overview</button>
+    <button class="nav-tab" onclick="showTab('log')">Log Food</button>
+    <button class="nav-tab" onclick="showTab('activity')">Activity</button>
+    <button class="nav-tab" onclick="showTab('body')">Body</button>
+    <button class="nav-tab" onclick="showTab('history')">History</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ======================== DASHBOARD ======================== -->
+    <div id="tab-dashboard" class="page active">
+
+      <!-- Score Hero -->
+      <div class="card score-hero">
+        <div class="ring-wrap">
+          <svg width="90" height="90" viewBox="0 0 90 90">
+            <circle cx="45" cy="45" r="38" fill="none" stroke="#ffffff10" stroke-width="7"/>
+            <circle id="scoreRingCircle" cx="45" cy="45" r="38" fill="none"
+              stroke="#c8ff00" stroke-width="7"
+              stroke-linecap="round"
+              stroke-dasharray="239"
+              stroke-dashoffset="239"
+              style="transition: stroke-dashoffset 1s cubic-bezier(0.34,1.56,0.64,1)"/>
+          </svg>
+          <div class="ring-value">
+            <div class="ring-num" id="scoreNumDisplay">—</div>
+            <div class="ring-label">SCORE</div>
+          </div>
+        </div>
+        <div class="score-details">
+          <div class="score-title" id="scoreTitle">Today's Health</div>
+          <div class="score-sub" id="scoreSub">Log your meals and activity to get your score.</div>
+          <div class="momentum-bar" id="momentumBar"></div>
+        </div>
+      </div>
+
+      <!-- Macros -->
+      <div class="macros-row">
+        <div class="macro-card">
+          <div class="macro-num" id="calDisplay">0</div>
+          <div class="macro-unit">kcal</div>
+          <div class="macro-label">Calories</div>
+          <div class="prog-bar">
+            <div class="prog-fill" id="calBar" style="width:0%;background:var(--accent3)"></div>
+          </div>
+        </div>
+        <div class="macro-card">
+          <div class="macro-num" id="proteinDisplay">0</div>
+          <div class="macro-unit">g</div>
+          <div class="macro-label">Protein</div>
+          <div class="prog-bar">
+            <div class="prog-fill" id="protBar" style="width:0%;background:var(--accent)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Steps + Workout Row -->
+      <div class="macros-row">
+        <div class="macro-card">
+          <div class="macro-num" id="stepsDisplay">0</div>
+          <div class="macro-unit">steps</div>
+          <div class="macro-label">Activity</div>
+          <div class="prog-bar">
+            <div class="prog-fill" id="stepsBar" style="width:0%;background:var(--accent2)"></div>
+          </div>
+        </div>
+        <div class="macro-card">
+          <div class="macro-num" id="workoutDisplay">—</div>
+          <div class="macro-unit" id="workoutUnit">status</div>
+          <div class="macro-label">Workout</div>
+          <div id="workoutStatus" style="font-size:10px;color:var(--text3);margin-top:6px;">Not logged</div>
+        </div>
+      </div>
+
+      <!-- Streak -->
+      <div class="card">
+        <div class="card-label">Current Streak</div>
+        <div class="streak-row">
+          <div class="streak-num" id="streakDisplay">0</div>
+          <div class="streak-info">
+            <div class="streak-title" id="streakTitle">Start your streak!</div>
+            <div class="streak-sub" id="streakSub">Score 70+ to maintain</div>
+          </div>
+          <div style="font-size:32px" id="streakEmoji">🌱</div>
+        </div>
+      </div>
+
+      <!-- Score Button -->
+      <button class="btn btn-score" onclick="scoreDay()">⚡ Calculate Day Score</button>
+
+      <!-- Score Breakdown (hidden until scored) -->
+      <div class="card" id="breakdownCard" style="display:none">
+        <div class="card-label">Score Breakdown</div>
+        <div class="breakdown-grid" id="breakdownGrid"></div>
+        <div class="insight-box" id="insightBox" style="margin-top:12px"></div>
+      </div>
+
+      <!-- New Day -->
+      <button class="new-day-btn" onclick="confirmNewDay()">＋ Start New Day</button>
+
+    </div>
+
+    <!-- ======================== LOG FOOD ======================== -->
+    <div id="tab-log" class="page">
+
+      <div class="log-section">
+        <div class="section-title">Log Food <span>tracker</span></div>
+
+        <!-- Quick chips -->
+        <div class="card-label">Quick Add</div>
+        <div class="quick-chips" id="quickChips"></div>
+
+        <!-- Manual entry -->
+        <div class="card-label" style="margin-top:12px">Custom Entry</div>
+        <div class="input-row">
+          <input class="input-field" id="foodName" placeholder="Food name (e.g. eggs + toast)" />
+        </div>
+        <div class="input-row">
+          <input class="input-field" id="foodCals" type="number" placeholder="Calories" />
+          <input class="input-field" id="foodProt" type="number" placeholder="Protein (g)" />
+          <button class="btn btn-primary" onclick="logFood()">ADD</button>
+        </div>
+
+        <!-- AI Estimate chip -->
+        <div class="insight-box" style="margin-bottom:12px">
+          💡 <strong>Tip:</strong> Use the quick-add chips above or type any food. Protein estimates use standard values (egg=6g, whey=24g, etc.)
+        </div>
+      </div>
+
+      <!-- Today's Meals -->
+      <div class="section-title">Today's Meals <span id="mealCount">0 logged</span></div>
+      <div class="card" id="mealsList">
+        <div class="empty-state" id="mealsEmpty">
+          <div class="empty-icon">🍽️</div>
+          No meals logged yet
+        </div>
+      </div>
+
+      <!-- Totals -->
+      <div class="card">
+        <div class="card-label">Daily Totals</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:22px" id="totalCalFull">0 kcal</div>
+            <div style="font-size:10px;color:var(--text3)">Target: 1800–2200</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:22px;color:var(--accent)" id="totalProtFull">0g</div>
+            <div style="font-size:10px;color:var(--text3)">Target: 90–120g</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div style="font-size:10px;color:var(--text2)" id="mealInsight">Start logging to see insights.</div>
+      </div>
+
+    </div>
+
+    <!-- ======================== ACTIVITY ======================== -->
+    <div id="tab-activity" class="page">
+
+      <div class="section-title">Activity <span>daily movement</span></div>
+
+      <!-- Steps -->
+      <div class="card">
+        <div class="card-label">Steps Today</div>
+        <div class="step-presets" id="stepPresets">
+          <div class="step-preset" data-steps="2000" onclick="setStepPreset(2000)">
+            <div class="step-preset-num">2K</div>
+            <div class="step-preset-label">Rest</div>
+          </div>
+          <div class="step-preset" data-steps="5000" onclick="setStepPreset(5000)">
+            <div class="step-preset-num">5K</div>
+            <div class="step-preset-label">Moderate</div>
+          </div>
+          <div class="step-preset" data-steps="8000" onclick="setStepPreset(8000)">
+            <div class="step-preset-num">8K</div>
+            <div class="step-preset-label">Good</div>
+          </div>
+          <div class="step-preset" data-steps="12000" onclick="setStepPreset(12000)">
+            <div class="step-preset-num">12K</div>
+            <div class="step-preset-label">Active</div>
+          </div>
+        </div>
+        <div class="input-row">
+          <input class="input-field" id="customSteps" type="number" placeholder="Or enter exact steps..." />
+          <button class="btn btn-primary" onclick="saveSteps()">SET</button>
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:28px" id="actStepsDisplay">0</div>
+            <div style="font-size:9px;color:var(--text3);letter-spacing:1px">STEPS</div>
+          </div>
+          <div id="actLevelBadge" style="font-size:11px;padding:6px 12px;border-radius:20px;background:var(--surface2);color:var(--text3)">LOW</div>
+        </div>
+      </div>
+
+      <!-- Activity Calories -->
+      <div class="card">
+        <div class="card-label">Activity Calories</div>
+        <div class="input-row">
+          <input class="input-field" id="actCals" type="number" placeholder="Calories burned (from fitness app)..." />
+          <button class="btn btn-primary" onclick="saveActCals()">SET</button>
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-top:6px">
+          <span id="actCalsDisplay">0</span> <span style="font-size:11px;color:var(--text3)">kcal burned</span>
+        </div>
+      </div>
+
+      <!-- Workout -->
+      <div class="section-title" style="margin-top:8px">Workout <span>gym session</span></div>
+      <div class="card">
+        <div class="card-label">Did you workout today?</div>
+        <div class="workout-toggle">
+          <button class="workout-btn" id="wBtn-strength" onclick="setWorkout('Strength')">💪 Strength</button>
+          <button class="workout-btn" id="wBtn-cardio" onclick="setWorkout('Cardio')">🏃 Cardio</button>
+          <button class="workout-btn" id="wBtn-none" onclick="setWorkout('none')">✗ Rest Day</button>
+        </div>
+        <div class="divider"></div>
+        <div class="card-label">Duration (optional)</div>
+        <div class="input-row">
+          <input class="input-field" id="workoutDuration" type="number" placeholder="Minutes..." />
+          <button class="btn btn-secondary" onclick="saveWorkoutDuration()">SAVE</button>
+        </div>
+        <div id="workoutInsight" class="insight-box" style="margin-top:8px;display:none"></div>
+      </div>
+
+    </div>
+
+    <!-- ======================== BODY METRICS ======================== -->
+    <div id="tab-body" class="page">
+
+      <div class="section-title">Body Metrics <span>composition</span></div>
+
+      <div class="card">
+        <div class="card-label">Log Your Metrics</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div>
+            <div style="font-size:9px;color:var(--text3);margin-bottom:4px">WEIGHT (kg)</div>
+            <input class="input-field" id="bodyWeight" type="number" step="0.1" placeholder="e.g. 75.2" />
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--text3);margin-bottom:4px">BODY FAT (%)</div>
+            <input class="input-field" id="bodyFat" type="number" step="0.1" placeholder="e.g. 18.5" />
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--text3);margin-bottom:4px">MUSCLE MASS (kg)</div>
+            <input class="input-field" id="bodyMuscle" type="number" step="0.1" placeholder="e.g. 35.0" />
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--text3);margin-bottom:4px">VISCERAL FAT</div>
+            <input class="input-field" id="bodyVisceral" type="number" placeholder="e.g. 8" />
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="saveBodyMetrics()">SAVE METRICS</button>
+      </div>
+
+      <!-- Latest metrics display -->
+      <div class="card" id="bodyDisplay" style="display:none">
+        <div class="card-label">Latest Reading</div>
+        <div class="body-grid" id="bodyGrid"></div>
+        <div class="insight-box" id="bodyInsight" style="margin-top:12px"></div>
+      </div>
+
+      <!-- Body history -->
+      <div id="bodyHistorySection" style="display:none">
+        <div class="section-title" style="margin-top:8px">Trend <span>last entries</span></div>
+        <div class="card" id="bodyHistoryList"></div>
+      </div>
+
+    </div>
+
+    <!-- ======================== HISTORY ======================== -->
+    <div id="tab-history" class="page">
+
+      <div class="section-title">Score History <span>daily_scores</span></div>
+
+      <div class="card" id="historyList">
+        <div class="empty-state" id="historyEmpty">
+          <div class="empty-icon">📊</div>
+          No scores yet.<br/>Complete a day and tap<br/>Calculate Day Score.
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:8px">Settings <span>data</span></div>
+      <div class="card">
+        <div class="toggle-row">
+          <div class="toggle-label">Protein Target (g)</div>
+          <div class="num-input-row">
+            <button class="num-btn" onclick="adjustTarget('protein',-10)">−</button>
+            <div class="num-display" id="protTarget">105</div>
+            <button class="num-btn" onclick="adjustTarget('protein',10)">＋</button>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Calorie Target (kcal)</div>
+          <div class="num-input-row">
+            <button class="num-btn" onclick="adjustTarget('calories',-100)">−</button>
+            <div class="num-display" id="calTarget">2000</div>
+            <button class="num-btn" onclick="adjustTarget('calories',100)">＋</button>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Step Target</div>
+          <div class="num-input-row">
+            <button class="num-btn" onclick="adjustTarget('steps',-1000)">−</button>
+            <div class="num-display" id="stepsTarget">7000</div>
+            <button class="num-btn" onclick="adjustTarget('steps',1000)">＋</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <button class="btn btn-danger" style="width:100%;margin-top:4px" onclick="clearAllData()">⚠ Clear All Data</button>
+      </div>
+
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')">
+      <div class="nav-icon">◉</div>
+      <div class="nav-label">Today</div>
+    </div>
+    <div class="nav-item" id="nav-log" onclick="showPage('log')">
+      <div class="nav-icon">＋</div>
+      <div class="nav-label">Food</div>
+    </div>
+    <div class="nav-item" id="nav-activity" onclick="showPage('activity')">
+      <div class="nav-icon">⚡</div>
+      <div class="nav-label">Move</div>
+    </div>
+    <div class="nav-item" id="nav-body" onclick="showPage('body')">
+      <div class="nav-icon">◈</div>
+      <div class="nav-label">Body</div>
+    </div>
+    <div class="nav-item" id="nav-history" onclick="showPage('history')">
+      <div class="nav-icon">≡</div>
+      <div class="nav-label">History</div>
+    </div>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  STORAGE + STATE
+// ═══════════════════════════════════════════
+
+const STORE_KEY = 'vitalcore_v2';
+
+const QUICK_FOODS = [
+  { name: 'Egg (1)', cal: 78, prot: 6 },
+  { name: 'Whey shake', cal: 150, prot: 25 },
+  { name: 'Muesli + milk', cal: 350, prot: 18 },
+  { name: 'Chicken breast', cal: 165, prot: 31 },
+  { name: 'Rice 150g', cal: 195, prot: 4 },
+  { name: 'Banana', cal: 90, prot: 1 },
+  { name: 'Greek yogurt', cal: 130, prot: 12 },
+  { name: 'Peanut butter tbsp', cal: 95, prot: 4 },
+  { name: 'Oats 80g', cal: 290, prot: 10 },
+  { name: 'Salmon 150g', cal: 280, prot: 34 },
+  { name: 'Bread slice', cal: 80, prot: 3 },
+  { name: 'Milk 200ml', cal: 100, prot: 7 },
+];
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    return raw ? JSON.parse(raw) : defaultState();
+  } catch { return defaultState(); }
+}
+
+function defaultState() {
+  return {
+    today: {
+      date: todayStr(),
+      calories: 0,
+      protein: 0,
+      steps: 0,
+      activityCals: 0,
+      workoutDone: false,
+      workoutType: null,
+      workoutDuration: null,
+      meals: [],
+      scored: false,
+      score: null,
+      breakdown: null,
+    },
+    streak: 0,
+    dailyScores: [],
+    bodyMetrics: [],
+    lastBodyMetrics: {},
+    settings: { proteinTarget: 105, calorieTarget: 2000, stepsTarget: 7000 }
+  };
+}
+
+function todayStr() {
+  return new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function save(state) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+}
+
+let S = loadState();
+
+// If date changed, archive yesterday and start fresh
+(function checkNewDate() {
+  if (S.today.date !== todayStr()) {
+    if (S.today.score !== null) {
+      S.dailyScores.push({ date: S.today.date, score: S.today.score });
+    }
+    S.today = defaultState().today;
+    save(S);
+  }
+})();
+
+// ═══════════════════════════════════════════
+//  NAV
+// ═══════════════════════════════════════════
+
+let currentPage = 'dashboard';
+let currentTab = 'dashboard';
+
+function showPage(page) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('nav-' + page)?.classList.add('active');
+  showTab(page);
+  currentPage = page;
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const tabEl = document.getElementById('tab-' + tab);
+  if (tabEl) tabEl.classList.add('active');
+  const tabs = document.querySelectorAll('.nav-tab');
+  tabs.forEach(t => { if (t.getAttribute('onclick')?.includes(tab)) t.classList.add('active'); });
+  currentTab = tab;
+  renderAll();
+}
+
+// ═══════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════
+
+function renderAll() {
+  renderHeader();
+  renderDashboard();
+  renderFoodLog();
+  renderActivity();
+  renderBody();
+  renderHistory();
+}
+
+function renderHeader() {
+  document.getElementById('dateBadge').textContent = todayStr();
+}
+
+function renderDashboard() {
+  const { calories, protein, steps, workoutDone, workoutType, workoutDuration, score, breakdown } = S.today;
+
+  // Macros
+  document.getElementById('calDisplay').textContent = calories;
+  document.getElementById('proteinDisplay').textContent = protein;
+  document.getElementById('calBar').style.width = Math.min(100, (calories / S.settings.calorieTarget) * 100) + '%';
+  document.getElementById('protBar').style.width = Math.min(100, (protein / S.settings.proteinTarget) * 100) + '%';
+
+  // Steps
+  document.getElementById('stepsDisplay').textContent = steps.toLocaleString();
+  document.getElementById('stepsBar').style.width = Math.min(100, (steps / S.settings.stepsTarget) * 100) + '%';
+
+  // Workout
+  if (workoutDone && workoutType !== 'none') {
+    document.getElementById('workoutDisplay').textContent = workoutType;
+    document.getElementById('workoutUnit').textContent = workoutDuration ? workoutDuration + ' min' : 'done ✓';
+    document.getElementById('workoutStatus').textContent = workoutDuration ? `${workoutDuration} min session` : 'Completed today';
+    document.getElementById('workoutStatus').style.color = 'var(--accent3)';
+  } else {
+    document.getElementById('workoutDisplay').textContent = '—';
+    document.getElementById('workoutUnit').textContent = 'status';
+    document.getElementById('workoutStatus').textContent = workoutType === 'none' ? 'Rest day 😴' : 'Not logged';
+    document.getElementById('workoutStatus').style.color = 'var(--text3)';
+  }
+
+  // Score ring
+  if (score !== null) {
+    const circumference = 239;
+    const offset = circumference - (score / 100) * circumference;
+    document.getElementById('scoreRingCircle').style.strokeDashoffset = offset;
+    document.getElementById('scoreNumDisplay').textContent = score;
+    const grade = score >= 90 ? 'Excellent' : score >= 75 ? 'Great' : score >= 60 ? 'Good' : score >= 45 ? 'Fair' : 'Needs Work';
+    document.getElementById('scoreTitle').textContent = grade + ' Day';
+    document.getElementById('scoreSub').textContent = getScoreMessage(score);
+  } else {
+    document.getElementById('scoreRingCircle').style.strokeDashoffset = 239;
+    document.getElementById('scoreNumDisplay').textContent = '—';
+    document.getElementById('scoreTitle').textContent = "Today's Health";
+    document.getElementById('scoreSub').textContent = 'Log meals & activity to score your day.';
+  }
+
+  // Streak
+  document.getElementById('streakDisplay').textContent = S.streak;
+  if (S.streak === 0) {
+    document.getElementById('streakTitle').textContent = 'Start your streak!';
+    document.getElementById('streakEmoji').textContent = '🌱';
+  } else if (S.streak < 3) {
+    document.getElementById('streakTitle').textContent = 'Getting started!';
+    document.getElementById('streakEmoji').textContent = '🔥';
+  } else if (S.streak < 7) {
+    document.getElementById('streakTitle').textContent = 'Building momentum!';
+    document.getElementById('streakEmoji').textContent = '🔥';
+  } else {
+    document.getElementById('streakTitle').textContent = 'On fire!';
+    document.getElementById('streakEmoji').textContent = '⚡';
+  }
+  document.getElementById('streakSub').textContent = `${S.streak} day${S.streak !== 1 ? 's' : ''} • Score 70+ to maintain`;
+
+  // Momentum bar
+  const recent = S.dailyScores.slice(-7);
+  const momBar = document.getElementById('momentumBar');
+  momBar.innerHTML = recent.map(d => `<div class="mom-dot filled" title="${d.score}"></div>`).join('') +
+    Array(Math.max(0, 7 - recent.length)).fill('<div class="mom-dot"></div>').join('');
+
+  // Breakdown
+  if (breakdown) {
+    document.getElementById('breakdownCard').style.display = 'block';
+    const grid = document.getElementById('breakdownGrid');
+    const items = [
+      { label: 'Protein', score: breakdown.protein, max: 30 },
+      { label: 'Calories', score: breakdown.calories, max: 20 },
+      { label: 'Quality', score: breakdown.quality, max: 15 },
+      { label: 'Consistent', score: breakdown.consistency, max: 10 },
+      { label: 'Activity', score: breakdown.activity, max: 15 },
+      { label: 'Workout', score: breakdown.workout, max: 10 },
+    ];
+    grid.innerHTML = items.map(i => {
+      const pct = i.score / i.max;
+      const col = pct >= 0.8 ? 'var(--accent)' : pct >= 0.5 ? 'var(--yellow)' : 'var(--red)';
+      return `<div class="breakdown-item">
+        <div class="breakdown-score" style="color:${col}">${i.score}</div>
+        <div class="breakdown-max">/${i.max}</div>
+        <div class="breakdown-label">${i.label}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('insightBox').innerHTML = getInsights();
+  }
+}
+
+function getScoreMessage(score) {
+  if (score >= 90) return 'Outstanding! Protein, activity and nutrition all dialled in.';
+  if (score >= 75) return 'Strong day. Keep this consistency going!';
+  if (score >= 60) return 'Good progress. Small tweaks will push you higher.';
+  if (score >= 45) return 'Room to improve. Focus on protein and steps tomorrow.';
+  return 'Tough day — that\'s okay. Reset and go again.';
+}
+
+function getInsights() {
+  const t = S.today;
+  const tips = [];
+  if (t.protein < 90) tips.push(`<strong>Protein gap:</strong> You're at ${t.protein}g — add a shake or chicken breast to hit 90g+.`);
+  if (t.calories < 1600) tips.push(`<strong>Undereating:</strong> ${t.calories} kcal is too low. Muscle loss risk increases.`);
+  if (t.calories > 2400) tips.push(`<strong>Calorie surplus:</strong> ${t.calories} kcal. Consider reducing portions tomorrow.`);
+  if (t.steps < 7000) tips.push(`<strong>Move more:</strong> Only ${t.steps.toLocaleString()} steps. A 20-min walk adds ~2000 steps.`);
+  if (!t.workoutDone || t.workoutType === 'none') tips.push(`<strong>No workout:</strong> Aim for 3–4 sessions/week for muscle retention.`);
+  if (tips.length === 0) tips.push(`<strong>Great day!</strong> You're nailing all your targets. Keep the momentum going tomorrow.`);
+  return tips.join('<br/>');
+}
+
+function renderFoodLog() {
+  const meals = S.today.meals;
+  const mealsList = document.getElementById('mealsList');
+  const empty = document.getElementById('mealsEmpty');
+
+  document.getElementById('mealCount').textContent = meals.length + ' logged';
+
+  if (meals.length === 0) {
+    empty.style.display = 'block';
+    mealsList.innerHTML = '';
+    mealsList.appendChild(empty);
+  } else {
+    mealsList.innerHTML = meals.map((m, i) => `
+      <div class="meal-item fade-in">
+        <div class="meal-name">${m.name}</div>
+        <div class="meal-macros">${m.cal} kcal<br/>${m.prot}g prot</div>
+        <button class="meal-delete" onclick="deleteMeal(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('totalCalFull').textContent = S.today.calories + ' kcal';
+  document.getElementById('totalProtFull').textContent = S.today.protein + 'g';
+
+  // Meal insight
+  const p = S.today.protein;
+  let ins = '';
+  if (p < 60) ins = '⚠ Protein very low. Add at least 2 more high-protein meals.';
+  else if (p < 90) ins = `↑ ${90 - p}g more protein to hit minimum target.`;
+  else if (p <= 120) ins = '✓ Protein on target. Well done.';
+  else ins = `You've exceeded protein target (${p}g). Excess is fine for athletes.`;
+  document.getElementById('mealInsight').textContent = ins;
+
+  // Quick chips
+  const chips = document.getElementById('quickChips');
+  chips.innerHTML = QUICK_FOODS.map((f, i) =>
+    `<div class="chip" onclick="quickAdd(${i})">${f.name}</div>`
+  ).join('');
+}
+
+function renderActivity() {
+  const { steps, activityCals, workoutDone, workoutType, workoutDuration } = S.today;
+
+  document.getElementById('actStepsDisplay').textContent = steps.toLocaleString();
+
+  // Level badge
+  const badge = document.getElementById('actLevelBadge');
+  if (steps >= 8000) { badge.textContent = 'GOOD ✓'; badge.style.background = 'rgba(0,255,200,0.1)'; badge.style.color = 'var(--accent2)'; }
+  else if (steps >= 4000) { badge.textContent = 'MODERATE'; badge.style.background = 'rgba(255,204,0,0.1)'; badge.style.color = 'var(--yellow)'; }
+  else { badge.textContent = 'LOW'; badge.style.background = 'var(--surface2)'; badge.style.color = 'var(--text3)'; }
+
+  document.getElementById('actCalsDisplay').textContent = activityCals;
+
+  // Step presets active state
+  document.querySelectorAll('.step-preset').forEach(p => {
+    p.classList.toggle('active', parseInt(p.dataset.steps) === steps);
+  });
+
+  // Workout buttons
+  ['strength', 'cardio', 'none'].forEach(type => {
+    const btn = document.getElementById('wBtn-' + type);
+    if (btn) btn.classList.toggle('active', workoutType === (type === 'none' ? 'none' : type.charAt(0).toUpperCase() + type.slice(1)));
+  });
+
+  if (workoutDuration) document.getElementById('workoutDuration').value = workoutDuration;
+
+  // Workout insight
+  const ins = document.getElementById('workoutInsight');
+  if (workoutDone && workoutType && workoutType !== 'none') {
+    ins.style.display = 'block';
+    if (workoutType === 'Strength') {
+      ins.innerHTML = '💪 <strong>Strength session logged.</strong> Ensure you hit 90g+ protein today for muscle protein synthesis.';
+    } else {
+      ins.innerHTML = '🏃 <strong>Cardio logged.</strong> Great for cardiovascular health. Monitor calorie intake — don\'t undereat on active days.';
+    }
+  } else {
+    ins.style.display = 'none';
+  }
+}
+
+function renderBody() {
+  const metrics = S.bodyMetrics;
+  if (metrics.length === 0) {
+    document.getElementById('bodyDisplay').style.display = 'none';
+    document.getElementById('bodyHistorySection').style.display = 'none';
+    return;
+  }
+
+  const latest = metrics[metrics.length - 1];
+  document.getElementById('bodyDisplay').style.display = 'block';
+
+  const grid = document.getElementById('bodyGrid');
+  const items = [
+    { label: 'Weight', val: latest.weight, unit: 'kg', color: 'var(--text)' },
+    { label: 'Body Fat', val: latest.fat, unit: '%', color: latest.fat > 25 ? 'var(--red)' : latest.fat > 18 ? 'var(--yellow)' : 'var(--accent2)' },
+    { label: 'Muscle', val: latest.muscle, unit: 'kg', color: 'var(--accent)' },
+    { label: 'Visceral Fat', val: latest.visceral, unit: '', color: latest.visceral > 12 ? 'var(--red)' : 'var(--accent2)' },
+  ].filter(i => i.val);
+
+  grid.innerHTML = items.map(i => `
+    <div class="body-metric">
+      <div class="body-metric-val" style="color:${i.color}">${i.val}<span class="body-metric-unit">${i.unit}</span></div>
+      <div class="body-metric-label">${i.label}</div>
+    </div>
+  `).join('');
+
+  // Body insight
+  const ins = [];
+  if (latest.fat && latest.fat > 25) ins.push('⚠ Body fat elevated. Focus on caloric deficit + strength training.');
+  if (latest.visceral && latest.visceral > 12) ins.push('⚠ Visceral fat risk zone (>12). Prioritize cardio and reduce refined carbs.');
+  if (metrics.length >= 2) {
+    const prev = metrics[metrics.length - 2];
+    if (prev.fat && latest.fat < prev.fat) ins.push(`✓ Fat decreased by ${(prev.fat - latest.fat).toFixed(1)}% — great progress!`);
+    if (prev.muscle && latest.muscle < prev.muscle) ins.push(`↓ Muscle decreased. Ensure adequate protein (90–120g/day).`);
+  }
+  if (ins.length === 0 && latest.fat) {
+    ins.push(latest.fat <= 18 ? '✓ Body composition looks healthy. Keep it up!' : 'Track consistently to see trends over time.');
+  }
+  document.getElementById('bodyInsight').innerHTML = ins.join('<br/>') || 'Track consistently to see trends.';
+
+  // History
+  if (metrics.length > 1) {
+    document.getElementById('bodyHistorySection').style.display = 'block';
+    document.getElementById('bodyHistoryList').innerHTML = metrics.slice().reverse().slice(0,5).map(m => `
+      <div class="meal-item">
+        <div style="font-size:9px;color:var(--text3);width:70px">${m.date}</div>
+        <div style="flex:1;font-size:11px">${m.weight ? m.weight + 'kg' : '—'} · ${m.fat ? m.fat + '% fat' : '—'}</div>
+        <div style="font-size:10px;color:var(--accent)">${m.muscle ? m.muscle + 'kg muscle' : ''}</div>
+      </div>
+    `).join('');
+  }
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+  const scores = S.dailyScores;
+
+  if (S.today.score !== null) {
+    const todayEntry = { date: 'Today', score: S.today.score };
+    const all = [todayEntry, ...scores.slice().reverse()];
+    renderScoreList(list, all);
+  } else if (scores.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(empty);
+  } else {
+    renderScoreList(list, scores.slice().reverse());
+  }
+
+  // Settings
+  document.getElementById('protTarget').textContent = S.settings.proteinTarget;
+  document.getElementById('calTarget').textContent = S.settings.calorieTarget;
+  document.getElementById('stepsTarget').textContent = S.settings.stepsTarget.toLocaleString();
+}
+
+function renderScoreList(container, items) {
+  container.innerHTML = items.map(d => {
+    const col = d.score >= 70 ? 'var(--accent)' : d.score >= 50 ? 'var(--yellow)' : 'var(--red)';
+    const tag = d.score >= 70 ? 'GOOD' : d.score >= 50 ? 'OK' : 'MISS';
+    const tagBg = d.score >= 70 ? 'rgba(200,255,0,0.1)' : d.score >= 50 ? 'rgba(255,204,0,0.1)' : 'rgba(255,68,102,0.1)';
+    return `
+      <div class="history-item">
+        <div class="history-date">${d.date}</div>
+        <div class="history-score-badge" style="color:${col}">${d.score}</div>
+        <div class="history-bar"><div class="history-bar-fill" style="width:${d.score}%;background:${col}"></div></div>
+        <div class="history-tag" style="background:${tagBg};color:${col}">${tag}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+//  ACTIONS
+// ═══════════════════════════════════════════
+
+function logFood() {
+  const name = document.getElementById('foodName').value.trim();
+  const cal = parseInt(document.getElementById('foodCals').value) || 0;
+  const prot = parseInt(document.getElementById('foodProt').value) || 0;
+
+  if (!name || !cal) { showToast('Enter food name and calories'); return; }
+
+  S.today.meals.push({ name, cal, prot });
+  S.today.calories += cal;
+  S.today.protein += prot;
+
+  document.getElementById('foodName').value = '';
+  document.getElementById('foodCals').value = '';
+  document.getElementById('foodProt').value = '';
+
+  save(S);
+  renderAll();
+  showToast(`+${cal} kcal · +${prot}g protein`);
+}
+
+function quickAdd(idx) {
+  const f = QUICK_FOODS[idx];
+  S.today.meals.push({ name: f.name, cal: f.cal, prot: f.prot });
+  S.today.calories += f.cal;
+  S.today.protein += f.prot;
+  save(S);
+  renderAll();
+  showToast(`${f.name} added`);
+}
+
+function deleteMeal(idx) {
+  const meal = S.today.meals[idx];
+  S.today.calories -= meal.cal;
+  S.today.protein -= meal.prot;
+  if (S.today.calories < 0) S.today.calories = 0;
+  if (S.today.protein < 0) S.today.protein = 0;
+  S.today.meals.splice(idx, 1);
+  save(S);
+  renderAll();
+  showToast('Meal removed');
+}
+
+function setStepPreset(steps) {
+  S.today.steps = steps;
+  save(S);
+  renderAll();
+  showToast(`Steps set to ${steps.toLocaleString()}`);
+}
+
+function saveSteps() {
+  const val = parseInt(document.getElementById('customSteps').value);
+  if (!val || val < 0) { showToast('Enter valid step count'); return; }
+  S.today.steps = val;
+  document.getElementById('customSteps').value = '';
+  save(S);
+  renderAll();
+  showToast(`Steps: ${val.toLocaleString()}`);
+}
+
+function saveActCals() {
+  const val = parseInt(document.getElementById('actCals').value);
+  if (!val) { showToast('Enter calories burned'); return; }
+  S.today.activityCals = val;
+  save(S);
+  renderAll();
+  showToast(`Activity: ${val} kcal burned`);
+}
+
+function setWorkout(type) {
+  S.today.workoutType = type;
+  S.today.workoutDone = (type !== 'none');
+  save(S);
+  renderAll();
+  showToast(type === 'none' ? 'Rest day logged' : type + ' workout logged 💪');
+}
+
+function saveWorkoutDuration() {
+  const val = parseInt(document.getElementById('workoutDuration').value);
+  if (!val) return;
+  S.today.workoutDuration = val;
+  save(S);
+  renderAll();
+  showToast(`Duration: ${val} min`);
+}
+
+function saveBodyMetrics() {
+  const w = parseFloat(document.getElementById('bodyWeight').value);
+  const f = parseFloat(document.getElementById('bodyFat').value);
+  const m = parseFloat(document.getElementById('bodyMuscle').value);
+  const v = parseFloat(document.getElementById('bodyVisceral').value);
+
+  if (!w && !f && !m && !v) { showToast('Enter at least one metric'); return; }
+
+  const entry = { date: todayStr(), weight: w||null, fat: f||null, muscle: m||null, visceral: v||null };
+  S.bodyMetrics.push(entry);
+  S.lastBodyMetrics = entry;
+
+  document.getElementById('bodyWeight').value = '';
+  document.getElementById('bodyFat').value = '';
+  document.getElementById('bodyMuscle').value = '';
+  document.getElementById('bodyVisceral').value = '';
+
+  save(S);
+  renderAll();
+  showToast('Body metrics saved');
+}
+
+function scoreDay() {
+  const t = S.today;
+  const settings = S.settings;
+
+  // Protein (30)
+  let protein = 10;
+  if (t.protein >= 100) protein = 30;
+  else if (t.protein >= 80) protein = 25;
+  else if (t.protein >= 60) protein = 20;
+
+  // Calories (20)
+  let calories = 10;
+  if (t.calories >= 1800 && t.calories <= 2200) calories = 20;
+  else if (t.calories >= 1600 && t.calories < 1800) calories = 15;
+  else if (t.calories > 2200 && t.calories <= 2500) calories = 15;
+
+  // Quality (15) — based on number of meals and diversity
+  let quality = 5;
+  if (t.meals.length >= 3) quality = 10;
+  if (t.meals.length >= 4) quality = 15;
+
+  // Consistency (10) — streak bonus
+  let consistency = S.streak >= 3 ? 10 : S.streak >= 1 ? 7 : 5;
+
+  // Activity (15)
+  let activity = 5;
+  if (t.steps >= 8000) activity = 15;
+  else if (t.steps >= 4000) activity = 10;
+
+  // Workout (10)
+  let workout = 0;
+  if (t.workoutDone && t.workoutType !== 'none') workout = 10;
+
+  const total = protein + calories + quality + consistency + activity + workout;
+  S.today.score = total;
+  S.today.breakdown = { protein, calories, quality, consistency, activity, workout };
+  S.today.scored = true;
+
+  // Streak
+  if (total >= 70) {
+    S.streak = (S.streak || 0) + 1;
+  } else {
+    S.streak = 0;
+  }
+
+  // Archive
+  const existing = S.dailyScores.findIndex(d => d.date === todayStr());
+  if (existing >= 0) S.dailyScores[existing].score = total;
+
+  save(S);
+  renderAll();
+  showPage('dashboard');
+  showToast(`Score: ${total}/100`);
+}
+
+function confirmNewDay() {
+  if (confirm('Start a new day? Today\'s food & activity will be cleared (score saved to history).')) {
+    if (S.today.score !== null) {
+      const existing = S.dailyScores.findIndex(d => d.date === S.today.date);
+      if (existing < 0) S.dailyScores.push({ date: S.today.date, score: S.today.score });
+    }
+    const fresh = defaultState().today;
+    fresh.date = todayStr();
+    S.today = fresh;
+    save(S);
+    renderAll();
+    showToast('New day started 🌅');
+  }
+}
+
+function adjustTarget(type, delta) {
+  if (type === 'protein') {
+    S.settings.proteinTarget = Math.max(60, Math.min(200, S.settings.proteinTarget + delta));
+  } else if (type === 'calories') {
+    S.settings.calorieTarget = Math.max(1200, Math.min(3500, S.settings.calorieTarget + delta));
+  } else if (type === 'steps') {
+    S.settings.stepsTarget = Math.max(2000, Math.min(20000, S.settings.stepsTarget + delta));
+  }
+  save(S);
+  renderAll();
+}
+
+function clearAllData() {
+  if (confirm('Delete ALL data? This cannot be undone.')) {
+    localStorage.removeItem(STORE_KEY);
+    S = defaultState();
+    save(S);
+    renderAll();
+    showToast('Data cleared');
+  }
+}
+
+// ═══════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+
+renderAll();
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
