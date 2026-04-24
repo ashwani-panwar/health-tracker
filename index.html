@@ -1016,6 +1016,17 @@
           </div>
         </div>
 
+        <!-- FOOD PHOTO ESTIMATION -->
+        <div class="card" style="border-color:rgba(255,107,53,0.2)">
+          <div class="card-label" style="color:var(--accent3)">📸 Estimate Food from Photo</div>
+          <div style="font-size:10px;color:var(--text2);margin-bottom:10px">Take a photo of your meal — AI identifies food items and estimates calories & protein</div>
+          <label class="btn btn-secondary" style="width:100%;text-align:center;cursor:pointer;display:block">
+            📷 Take / Upload Food Photo
+            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="estimateFoodFromPhoto(this)" />
+          </label>
+          <div id="photoEstimateResult" style="display:none;margin-top:10px"></div>
+        </div>
+
         <!-- FOOD LABEL SCAN -->
         <div class="card" style="border-color:rgba(0,255,200,0.15)">
           <div class="card-label" style="color:var(--accent2)">📷 Scan Nutrition Label</div>
@@ -1271,6 +1282,23 @@
             <button class="num-btn" onclick="adjustTarget('steps',-1000)">−</button>
             <div class="num-display" id="stepsTarget">7000</div>
             <button class="num-btn" onclick="adjustTarget('steps',1000)">＋</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <!-- Gemini API Key for photo food detection + body OCR -->
+        <div id="apiKeySection">
+          <div class="toggle-row" style="margin-bottom:4px">
+            <div class="toggle-label">Gemini API Key <span style="font-size:8px;color:var(--accent)">(FREE — food photos + body scan)</span></div>
+          </div>
+          <div id="apiKeyStatus" style="font-size:9px;margin-bottom:6px;padding:5px 8px;border-radius:6px;display:none"></div>
+          <div class="input-row" style="margin-bottom:4px">
+            <input class="input-field" id="apiKeyInput" type="password" placeholder="AIza..." style="font-size:11px" />
+            <button class="btn btn-primary" onclick="saveApiKey()" style="white-space:nowrap;font-size:11px">SAVE</button>
+          </div>
+          <div style="font-size:9px;color:var(--text3);line-height:1.6">
+            🆓 <strong style="color:var(--accent)">100% Free</strong> — Get key at <strong>aistudio.google.com</strong> → "Get API Key"<br/>
+            Enables: food photo detection + full body scale reading (all 14 params).<br/>
+            Key stored locally on your device only, never sent anywhere else.
           </div>
         </div>
         <div class="divider"></div>
@@ -1846,6 +1874,7 @@ function renderHistory() {
   document.getElementById('protTarget').textContent = S.settings.proteinTarget;
   document.getElementById('calTarget').textContent = S.settings.calorieTarget;
   document.getElementById('stepsTarget').textContent = S.settings.stepsTarget.toLocaleString();
+  renderApiKeyStatus();
 }
 
 function renderScoreList(container, items) {
@@ -2067,6 +2096,33 @@ function clearAllData() {
   }
 }
 
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { showToast('Enter a Gemini API key'); return; }
+  if (!key.startsWith('AIza')) { showToast('Invalid key — Gemini keys start with AIza'); return; }
+  if (!S.settings) S.settings = defaultState().settings;
+  S.settings.geminiApiKey = key;
+  save(S);
+  document.getElementById('apiKeyInput').value = '';
+  renderApiKeyStatus();
+  showToast('Gemini key saved ✓ Photo detection enabled!');
+}
+
+function renderApiKeyStatus() {
+  const el = document.getElementById('apiKeyStatus');
+  if (!el) return;
+  const key = S.settings && S.settings.geminiApiKey;
+  if (key) {
+    el.style.display = 'block';
+    el.style.background = 'rgba(200,255,0,0.08)';
+    el.style.color = 'var(--accent)';
+    el.style.border = '1px solid rgba(200,255,0,0.2)';
+    el.textContent = '✓ Gemini key active — photo food detection & body scan enabled';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 // ═══════════════════════════════════════════
 //  TOAST
 // ═══════════════════════════════════════════
@@ -2229,41 +2285,102 @@ function applyWorkoutOcr(d) {
 // ─── BODY SCALE SCREENSHOT ───
 async function scanBodyScreenshot(input) {
   if (!input.files[0]) return;
-  await runOCR(input.files[0], 'bodyOcrResult', (result, cid) => {
+  const file = input.files[0];
+  const el = document.getElementById('bodyOcrResult');
+  el.style.display = 'block';
+
+  // ── GEMINI PATH (preferred — reads all 14+ params perfectly) ──
+  if (getGeminiKey()) {
+    el.innerHTML = `<div class="ocr-progress">
+      <div style="font-size:11px;color:var(--text2)">🔍 Gemini reading scale screenshot...</div>
+      <div class="ocr-bar"><div class="ocr-bar-fill" style="width:30%;transition:width 2s"></div></div>
+      <div style="font-size:9px;color:var(--text3);margin-top:4px">Extracting all body metrics...</div>
+    </div>`;
+
+    try {
+      const prompt = `This is a body composition scale app screenshot. Extract ALL visible numeric values.
+Reply ONLY as JSON object with these exact keys (use null if not visible):
+{
+  "weight": number_kg,
+  "bmi": number,
+  "heartRate": number_bpm,
+  "bodyFat": number_percent,
+  "subcutaneousFat": number_percent,
+  "visceralFat": number,
+  "muscleMass": number_kg,
+  "skeletalMuscle": number_percent,
+  "proteinPct": number_percent,
+  "boneMass": number_kg,
+  "bodyWater": number_percent,
+  "leanMass": number_kg,
+  "metabolicAge": number_years,
+  "bmr": number_kcal,
+  "standardWeight": number_kg,
+  "bodyType": "string_or_null"
+}
+Read the MAIN large numbers, NOT the small delta/change values (the small grey numbers).`;
+
+      const text = await callGeminiVision(file, prompt);
+      const jsonMatch = text.match(/\{[\s\S]*?\}/);
+      if (!jsonMatch) throw new Error('No JSON');
+
+      const d = JSON.parse(jsonMatch[0]);
+      renderBodyOcrResult(d, el, 'Gemini Vision');
+      return;
+    } catch(e) {
+      // Fall through to OCR
+      console.warn('Gemini body scan failed:', e.message);
+    }
+  }
+
+  // ── OCR FALLBACK ──
+  await runOCR(file, 'bodyOcrResult', (result, cid) => {
     const d = window.OCREngine.parseBody(result.rawText);
-    const el = document.getElementById(cid);
     const hasData = d.weight || d.bodyFat || d.muscleMass || d.visceralFat || d.subcutaneousFat || d.proteinPct || d.leanMass || d.bmr;
     if (!hasData) {
-      el.innerHTML = `<div class="insight-box">⚠ No body data found. Ensure the scale screenshot shows weight and body composition values clearly.<br/><small style="color:var(--text3);font-size:9px">Raw text: ${result.rawText.slice(0,200)}</small></div>`; return;
+      el.innerHTML = `<div class="insight-box">⚠ Couldn't extract data. Add a <a href="#" onclick="showApiKeyPrompt();return false;" style="color:var(--accent)">free Gemini key</a> in Settings for accurate reading.<br/><small style="color:var(--text3);font-size:9px">Raw: ${result.rawText.slice(0,200)}</small></div>`;
+      return;
     }
-    // All possible display fields with new field names
-    const fields = [
-      ['Weight',               d.weight,          'kg'  ],
-      ['BMI',                  d.bmi,             ''    ],
-      ['Heart Rate',           d.heartRate,       ' bpm'],
-      ['Body Fat',             d.bodyFat,         '%'   ],
-      ['Subcutaneous Fat',     d.subcutaneousFat, '%'   ],
-      ['Visceral Fat',         d.visceralFat,     ''    ],
-      ['Muscle Mass',          d.muscleMass,      'kg'  ],
-      ['Skeletal Muscle',      d.skeletalMuscle,  '%'   ],
-      ['Protein',              d.proteinPct,      '%'   ],
-      ['Bone Mass',            d.boneMass,        'kg'  ],
-      ['Body Water / Moisture',d.bodyWater,       '%'   ],
-      ['Lean Body Mass',       d.leanMass,        'kg'  ],
-      ['Metabolic Age',        d.metabolicAge,    ' yrs'],
-      ['BMR',                  d.bmr,             ' kcal'],
-      ['Standard Weight',      d.standardWeight,  'kg'  ],
-      ['Body Type',            d.bodyType,        ''    ],
-    ].filter(([,v]) => v !== null && v !== undefined);
-
-    const count = fields.length;
-    let html = `<div class="ocr-extracted"><div style="font-size:10px;color:var(--accent);margin-bottom:8px">✓ ${count} METRICS EXTRACTED</div>`;
-    html += fields.map(([label, val, unit]) =>
-      `<div class="ocr-row"><span>${label}</span><span class="ocr-val">${val}${unit}</span></div>`
-    ).join('');
-    html += `</div><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick='applyBodyOcr(${JSON.stringify(d).replace(/'/g,"&#39;")})'>✓ Save All ${count} Metrics</button>`;
-    el.innerHTML = html;
+    renderBodyOcrResult(d, el, 'OCR');
   });
+}
+
+function renderBodyOcrResult(d, el, method) {
+  const fields = [
+    ['Weight',               d.weight,          'kg'   ],
+    ['BMI',                  d.bmi,             ''     ],
+    ['Heart Rate',           d.heartRate,       ' bpm' ],
+    ['Body Fat',             d.bodyFat,         '%'    ],
+    ['Subcutaneous Fat',     d.subcutaneousFat, '%'    ],
+    ['Visceral Fat',         d.visceralFat,     ''     ],
+    ['Muscle Mass',          d.muscleMass,      'kg'   ],
+    ['Skeletal Muscle',      d.skeletalMuscle,  '%'    ],
+    ['Protein',              d.proteinPct,      '%'    ],
+    ['Bone Mass',            d.boneMass,        'kg'   ],
+    ['Body Water / Moisture',d.bodyWater,       '%'    ],
+    ['Lean Body Mass',       d.leanMass,        'kg'   ],
+    ['Metabolic Age',        d.metabolicAge,    ' yrs' ],
+    ['BMR',                  d.bmr,             ' kcal'],
+    ['Standard Weight',      d.standardWeight,  'kg'   ],
+    ['Body Type',            d.bodyType,        ''     ],
+  ].filter(([,v]) => v !== null && v !== undefined);
+
+  const count = fields.length;
+  if (!count) {
+    el.innerHTML = `<div class="insight-box">⚠ No data extracted. Try Gemini Vision — add free key in History → Settings.</div>`;
+    return;
+  }
+
+  let html = `<div class="ocr-extracted">
+    <div style="font-size:10px;color:var(--accent);margin-bottom:8px">✓ ${count}/14 PARAMS — ${method}</div>`;
+  html += fields.map(([label, val, unit]) =>
+    `<div class="ocr-row"><span>${label}</span><span class="ocr-val">${val}${unit}</span></div>`
+  ).join('');
+  html += `</div>
+  <button class="btn btn-primary" style="width:100%;margin-top:8px"
+    onclick='applyBodyOcr(${JSON.stringify(d).replace(/'/g,"&#39;")})'>✓ Save All ${count} Metrics</button>
+  ${count < 10 && !getGeminiKey() ? `<div style="font-size:9px;color:var(--accent3);margin-top:5px">💡 Add Gemini key in Settings to extract all 14 params</div>` : ''}`;
+  el.innerHTML = html;
 }
 
 function applyBodyOcr(d) {
@@ -2328,6 +2445,157 @@ function logLabelFood(d) {
   S.today.protein += (d.protein || 0);
   save(S); renderAll();
   showToast(`Logged ${d.calories} kcal from label ✓`);
+}
+
+// ═══════════════════════════════════════════
+//  GEMINI VISION — shared helper
+//  Used by: food photo + body scale scan
+// ═══════════════════════════════════════════
+
+function getGeminiKey() {
+  return S.settings && S.settings.geminiApiKey;
+}
+
+async function callGeminiVision(file, prompt) {
+  const key = getGeminiKey();
+  if (!key) throw new Error('NO_KEY');
+
+  const b64 = await fileToBase64(file);
+  const mimeType = file.type || 'image/jpeg';
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  const body = {
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: mimeType, data: b64 } },
+        { text: prompt }
+      ]
+    }],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 800 }
+  };
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// ─── FOOD PHOTO ESTIMATION via Gemini ───
+async function estimateFoodFromPhoto(input) {
+  if (!input.files[0]) return;
+  const file = input.files[0];
+  const el = document.getElementById('photoEstimateResult');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="ocr-progress">
+    <div style="font-size:11px;color:var(--text2)">🔍 Analysing food photo...</div>
+    <div class="ocr-bar"><div class="ocr-bar-fill" id="photoBar" style="width:15%"></div></div>
+    <div style="font-size:9px;color:var(--text3);margin-top:4px" id="photoStatus">Sending to Gemini...</div>
+  </div>`;
+
+  const setP = (pct, msg) => {
+    const b = document.getElementById('photoBar');
+    const s = document.getElementById('photoStatus');
+    if (b) b.style.width = pct + '%';
+    if (s) s.textContent = msg;
+  };
+
+  if (!getGeminiKey()) {
+    el.innerHTML = showPhotoFallback();
+    return;
+  }
+
+  try {
+    setP(30, 'Gemini analysing your meal...');
+    const prompt = `Look at this food photo carefully. Identify every food item visible.
+For each item estimate realistic portion size and nutrition.
+Reply ONLY with a JSON array, no other text:
+[{"food":"item name","portion":"e.g. 1 cup / 150g / 2 pieces","cal":number,"prot":number}]
+Use realistic values. Typical meal is 300-700 kcal total.`;
+
+    const text = await callGeminiVision(file, prompt);
+    setP(90, 'Parsing results...');
+
+    const jsonMatch = text.match(/\[[\s\S]*?\]/);
+    if (!jsonMatch) throw new Error('No JSON in response');
+    const items = JSON.parse(jsonMatch[0]);
+    showPhotoResult(items, el, 'Gemini 1.5 Flash');
+
+  } catch(e) {
+    if (e.message === 'NO_KEY') {
+      el.innerHTML = showPhotoFallback();
+    } else {
+      el.innerHTML = `<div class="insight-box">⚠ Gemini error: ${e.message}<br/><small style="color:var(--text3)">Check API key in History → Settings</small></div>`;
+    }
+  }
+}
+
+function showPhotoResult(items, el, method) {
+  if (!items || !items.length) { el.innerHTML = showPhotoFallback('No food detected'); return; }
+  const totalCal  = items.reduce((s,i) => s + (i.cal||0), 0);
+  const totalProt = Math.round(items.reduce((s,i) => s + (i.prot||0), 0) * 10) / 10;
+  const meal = { name: items.map(i => i.food).join(' + '), cal: totalCal, prot: totalProt };
+
+  let html = `<div class="ocr-extracted">
+    <div style="font-size:10px;color:var(--accent3);margin-bottom:8px">✓ DETECTED BY ${method}</div>`;
+  html += items.map(i =>
+    `<div class="ocr-row">
+      <span>${i.food} <small style="color:var(--text3)">${i.portion||''}</small></span>
+      <span class="ocr-val">${i.cal}kcal · ${i.prot}g</span>
+    </div>`
+  ).join('');
+  html += `<div style="display:flex;justify-content:space-between;padding:8px 0;margin-top:4px;border-top:1px solid var(--border)">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:20px">${totalCal} kcal</div>
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:20px;color:var(--accent)">${totalProt}g prot</div>
+  </div></div>
+  <button class="btn btn-primary" style="width:100%;margin-top:8px"
+    onclick='logPhotoMeal(${JSON.stringify(meal).replace(/'/g,"&#39;")})'>✓ Log This Meal</button>
+  <div style="font-size:9px;color:var(--text3);margin-top:5px">AI estimates — adjust manually if needed</div>`;
+  el.innerHTML = html;
+}
+
+function showPhotoFallback(hint) {
+  const hasKey = !!getGeminiKey();
+  return `<div class="insight-box">
+    ${hint ? `⚠ ${hint}<br/>` : ''}
+    ${!hasKey
+      ? `📷 Add your <strong style="color:var(--accent)">free Gemini API key</strong> in History → Settings to enable food photo detection.<br/><small style="color:var(--text3)">Get it free at aistudio.google.com</small>`
+      : `📷 Could not identify food. Try a clearer photo with good lighting.`}
+    <br/>Or type your meal in the AI text estimator above.
+  </div>`;
+}
+
+function logPhotoMeal(meal) {
+  S.today.meals.push({ name: meal.name + ' (photo)', cal: meal.cal, prot: meal.prot });
+  S.today.calories += meal.cal;
+  S.today.protein  += meal.prot;
+  save(S); renderAll();
+  document.getElementById('photoEstimateResult').style.display = 'none';
+  showToast(`+${meal.cal} kcal logged from photo ✓`);
+}
+
+function showApiKeyPrompt() {
+  showPage('history');
+  setTimeout(() => {
+    document.getElementById('apiKeySection')?.scrollIntoView({ behavior: 'smooth' });
+  }, 300);
 }
 
 // ─── LOAD EXTERNAL SCRIPTS ───
