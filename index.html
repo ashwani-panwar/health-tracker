@@ -1295,11 +1295,20 @@
             <input class="input-field" id="apiKeyInput" type="password" placeholder="AIza..." style="font-size:11px" />
             <button class="btn btn-primary" onclick="saveApiKey()" style="white-space:nowrap;font-size:11px">SAVE</button>
           </div>
+          <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;font-size:11px" onclick="testGeminiKey()">🔬 Test Gemini Key</button>
+          <div id="geminiTestResult" style="display:none;font-size:10px;padding:8px;border-radius:6px;margin-bottom:6px"></div>
           <div style="font-size:9px;color:var(--text3);line-height:1.6">
             🆓 <strong style="color:var(--accent)">100% Free</strong> — Get key at <strong>aistudio.google.com</strong> → "Get API Key"<br/>
             Enables: food photo detection + full body scale reading (all 14 params).<br/>
             Key stored locally on your device only, never sent anywhere else.
           </div>
+        </div>
+        <div class="divider"></div>
+        <!-- App cache / version control -->
+        <div style="margin-bottom:8px">
+          <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">App Cache</div>
+          <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;font-size:11px" onclick="forceRefreshApp()">🔄 Force Refresh App (clear cache)</button>
+          <div style="font-size:9px;color:var(--text3)" id="appVersionLabel">Version: loading...</div>
         </div>
         <div class="divider"></div>
         <button class="btn btn-danger" style="width:100%;margin-top:4px" onclick="clearAllData()">⚠ Clear All Data</button>
@@ -1875,6 +1884,8 @@ function renderHistory() {
   document.getElementById('calTarget').textContent = S.settings.calorieTarget;
   document.getElementById('stepsTarget').textContent = S.settings.stepsTarget.toLocaleString();
   renderApiKeyStatus();
+  const vl = document.getElementById('appVersionLabel');
+  if (vl) vl.textContent = 'Version: 2.5 · Cache: vitalcore-v5';
 }
 
 function renderScoreList(container, items) {
@@ -2106,6 +2117,81 @@ function saveApiKey() {
   document.getElementById('apiKeyInput').value = '';
   renderApiKeyStatus();
   showToast('Gemini key saved ✓ Photo detection enabled!');
+}
+
+async function testGeminiKey() {
+  const key = getGeminiKey();
+  const resultEl = document.getElementById('geminiTestResult');
+  resultEl.style.display = 'block';
+
+  if (!key) {
+    resultEl.style.background = 'rgba(255,68,102,0.1)';
+    resultEl.style.color = 'var(--red)';
+    resultEl.textContent = '✗ No key saved. Enter your Gemini API key above first.';
+    return;
+  }
+
+  resultEl.style.background = 'var(--surface2)';
+  resultEl.style.color = 'var(--text2)';
+  resultEl.textContent = '⏳ Testing key against all Gemini models...';
+
+  const MODELS = [
+    { ver: 'v1beta', name: 'gemini-2.0-flash' },
+    { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
+    { ver: 'v1beta', name: 'gemini-1.5-flash' },
+    { ver: 'v1',     name: 'gemini-1.5-flash-latest' },
+    { ver: 'v1',     name: 'gemini-1.5-flash' },
+  ];
+
+  const results = [];
+  for (const { ver, name } of MODELS) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/${ver}/models/${name}:generateContent?key=${key}`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Reply with just the word: OK' }] }],
+          generationConfig: { maxOutputTokens: 5 }
+        })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && data?.candidates?.[0]?.content) {
+        results.push(`✓ ${ver}/${name}`);
+      } else {
+        const msg = data?.error?.message || `HTTP ${resp.status}`;
+        results.push(`✗ ${ver}/${name}: ${msg.slice(0,60)}`);
+      }
+    } catch(e) {
+      results.push(`✗ ${ver}/${name}: ${e.message.slice(0,40)}`);
+    }
+  }
+
+  const anyWorked = results.some(r => r.startsWith('✓'));
+  resultEl.style.background = anyWorked ? 'rgba(200,255,0,0.08)' : 'rgba(255,68,102,0.1)';
+  resultEl.style.color = anyWorked ? 'var(--accent)' : 'var(--red)';
+  resultEl.innerHTML = results.map(r =>
+    `<div style="margin-bottom:2px;color:${r.startsWith('✓') ? 'var(--accent)' : 'var(--text3)'}">${r}</div>`
+  ).join('') + (anyWorked
+    ? '<div style="margin-top:6px;color:var(--accent)">✓ Key is valid! Photo features enabled.</div>'
+    : '<div style="margin-top:6px;color:var(--red)">✗ Key has no access. Try generating a new key at aistudio.google.com</div>'
+  );
+}
+
+async function forceRefreshApp() {
+  showToast('Clearing cache and refreshing...');
+  try {
+    // Unregister all service workers
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(r => r.unregister()));
+    // Delete all caches
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    showToast('Cache cleared! Reloading...');
+    setTimeout(() => location.reload(true), 800);
+  } catch(e) {
+    location.reload(true);
+  }
 }
 
 function renderApiKeyStatus() {
