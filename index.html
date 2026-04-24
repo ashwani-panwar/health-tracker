@@ -766,8 +766,22 @@
     .ai-item:last-child { border-bottom: none; }
     .ai-item-val { font-family: 'Syne', sans-serif; font-size: 11px; color: var(--accent2); }
     .confidence-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
-  
-      0%, 100% { opacity: 1; }
+
+    /* Body comparison delta */
+    .comp-cell { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center; }
+    .comp-metric { font-size: 8px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+    .comp-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; line-height: 1; }
+    .comp-deltas { display: flex; justify-content: center; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+    .delta-badge { font-size: 8px; padding: 2px 5px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+    .delta-good    { background: rgba(200,255,0,0.12);  color: var(--accent); }
+    .delta-bad     { background: rgba(255,68,102,0.12); color: var(--red); }
+    .delta-neutral { background: rgba(255,255,255,0.06); color: var(--text3); }
+    .body-comp-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+    .body-comp-row:last-child { border-bottom: none; }
+    .body-comp-label { color: var(--text2); flex: 1; }
+    .body-comp-cur { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; width: 52px; text-align: right; }
+    .body-comp-yd  { font-size: 9px; width: 58px; text-align: center; }
+    .body-comp-wk  { font-size: 9px; width: 58px; text-align: right; }
       50% { opacity: 0.5; }
     }
 
@@ -946,6 +960,13 @@
           </div>
           <div style="font-size:32px" id="streakEmoji">🌱</div>
         </div>
+      </div>
+
+      <!-- Body Comparison Card (shown when metrics exist) -->
+      <div class="card" id="bodyCompCard" style="display:none">
+        <div class="card-label">Body — vs Yesterday &amp; Last Week</div>
+        <div id="bodyCompGrid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px"></div>
+        <div id="bodyCompInsight" class="insight-box"></div>
       </div>
 
       <!-- Score Button -->
@@ -1189,6 +1210,21 @@
         <div class="card-label">Latest Reading</div>
         <div class="body-grid" id="bodyGrid"></div>
         <div class="insight-box" id="bodyInsight" style="margin-top:12px"></div>
+      </div>
+
+      <!-- vs Yesterday / Last Week comparison table -->
+      <div id="bodyCompSection" style="display:none">
+        <div class="section-title" style="margin-top:8px">Changes <span>vs yesterday &amp; last week</span></div>
+        <div class="card">
+          <!-- Column headers -->
+          <div style="display:flex;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:4px">
+            <div style="flex:1;font-size:8px;color:var(--text3);letter-spacing:1px">METRIC</div>
+            <div style="width:52px;text-align:right;font-size:8px;color:var(--text3);letter-spacing:1px">NOW</div>
+            <div style="width:58px;text-align:center;font-size:8px;color:var(--text3);letter-spacing:1px">YD</div>
+            <div style="width:58px;text-align:right;font-size:8px;color:var(--text3);letter-spacing:1px">7D</div>
+          </div>
+          <div id="bodyCompTable"></div>
+        </div>
       </div>
 
       <!-- Body history -->
@@ -1476,6 +1512,52 @@ function renderDashboard() {
     }).join('');
     document.getElementById('insightBox').innerHTML = getInsights();
   }
+
+  // ── Body comparison card on dashboard ──
+  const comp = getBodyComparison();
+  const compCard = document.getElementById('bodyCompCard');
+  if (comp && comp.rows.length > 0) {
+    compCard.style.display = 'block';
+    const latest = comp.latest;
+
+    // Show top 4 most important metrics as tiles
+    const keyMetrics = comp.rows.filter(r =>
+      ['weight','fat','muscle','visceral'].includes(r.key)
+    ).slice(0, 4);
+
+    document.getElementById('bodyCompGrid').innerHTML = keyMetrics.map(r => {
+      const col = r.key === 'weight' ? 'var(--text)' :
+                  r.key === 'fat' || r.key === 'visceral' ? (r.cur > 25 ? 'var(--red)' : 'var(--accent2)') :
+                  'var(--accent)';
+      return `<div class="comp-cell">
+        <div class="comp-metric">${r.label}</div>
+        <div class="comp-val" style="color:${col}">${r.cur}${r.unit}</div>
+        <div class="comp-deltas">
+          ${r.deltaYd !== null ? formatDelta(r.deltaYd, r.unit, r.ydGood) : ''}
+          ${r.deltaWk !== null ? formatDelta(r.deltaWk, r.unit, r.wkGood) : ''}
+        </div>
+        <div style="font-size:7px;color:var(--text3);margin-top:2px">${r.deltaYd !== null ? 'yd' : ''} ${r.deltaWk !== null ? '7d' : ''}</div>
+      </div>`;
+    }).join('');
+
+    // Insight text
+    const tips = [];
+    comp.rows.forEach(r => {
+      if (r.deltaYd !== null && r.ydGood === false && Math.abs(r.deltaYd) > 0) {
+        tips.push(`<strong>${r.label}</strong> up ${Math.abs(r.deltaYd)}${r.unit} vs yesterday.`);
+      }
+      if (r.deltaWk !== null && r.wkGood === true && Math.abs(r.deltaWk) > 0) {
+        tips.push(`✓ <strong>${r.label}</strong> improved ${Math.abs(r.deltaWk)}${r.unit} this week.`);
+      }
+    });
+    if (tips.length === 0) {
+      const wt = comp.rows.find(r => r.key === 'weight');
+      tips.push(wt ? `Weight: <strong>${wt.cur}kg</strong> today.` : 'Body metrics logged.');
+    }
+    document.getElementById('bodyCompInsight').innerHTML = tips.slice(0, 3).join(' ');
+  } else {
+    compCard.style.display = 'none';
+  }
 }
 
 function getScoreMessage(score) {
@@ -1496,6 +1578,78 @@ function getInsights() {
   if (!t.workoutDone || t.workoutType === 'none') tips.push(`<strong>No workout:</strong> Aim for 3–4 sessions/week for muscle retention.`);
   if (tips.length === 0) tips.push(`<strong>Great day!</strong> You're nailing all your targets. Keep the momentum going tomorrow.`);
   return tips.join('<br/>');
+}
+
+// ─────────────────────────────────────────────
+//  BODY COMPARISON HELPER
+//  Returns { latest, yesterday, lastWeek, rows[] }
+//  Rows contain delta info per metric
+// ─────────────────────────────────────────────
+function getBodyComparison() {
+  const metrics = S.bodyMetrics;
+  if (metrics.length < 2) return null;
+
+  const latest = metrics[metrics.length - 1];
+  const latestDate = new Date(latest.date.split(' ').reverse().join(' '));
+
+  // Find yesterday's entry (within 36h)
+  let yesterday = null;
+  for (let i = metrics.length - 2; i >= 0; i--) {
+    const d = new Date(metrics[i].date.split(' ').reverse().join(' '));
+    const diffDays = (latestDate - d) / (1000 * 60 * 60 * 24);
+    if (diffDays >= 0.5 && diffDays <= 2) { yesterday = metrics[i]; break; }
+  }
+
+  // Find last week's entry (5–10 days ago)
+  let lastWeek = null;
+  for (let i = metrics.length - 2; i >= 0; i--) {
+    const d = new Date(metrics[i].date.split(' ').reverse().join(' '));
+    const diffDays = (latestDate - d) / (1000 * 60 * 60 * 24);
+    if (diffDays >= 4 && diffDays <= 10) { lastWeek = metrics[i]; break; }
+    if (diffDays > 10 && !lastWeek) { lastWeek = metrics[i]; break; } // use oldest if no 7d entry
+  }
+
+  // Metric definitions: [key, label, unit, lowerIsBetter]
+  const metricDefs = [
+    ['weight',        'Weight',           'kg',   true],
+    ['fat',           'Body Fat',         '%',    true],
+    ['subcutaneous',  'Subcutaneous Fat', '%',    true],
+    ['visceral',      'Visceral Fat',     '',     true],
+    ['muscle',        'Muscle Mass',      'kg',   false],
+    ['skeletalMuscle','Skeletal Muscle',  '%',    false],
+    ['protein',       'Protein Mass',     'kg',   false],
+    ['bone',          'Bone Mass',        'kg',   false],
+    ['water',         'Body Water',       '%',    false],
+    ['lean',          'Lean Mass',        'kg',   false],
+    ['bmi',           'BMI',              '',     true],
+  ];
+
+  const rows = metricDefs
+    .filter(([key]) => latest[key] !== null && latest[key] !== undefined)
+    .map(([key, label, unit, lowerIsBetter]) => {
+      const cur = latest[key];
+
+      const deltaYd = yesterday && yesterday[key] != null
+        ? Math.round((cur - yesterday[key]) * 100) / 100 : null;
+      const deltaWk = lastWeek && lastWeek[key] != null
+        ? Math.round((cur - lastWeek[key]) * 100) / 100 : null;
+
+      // good = improved (lower if lowerIsBetter, higher if not)
+      const ydGood = deltaYd !== null ? (lowerIsBetter ? deltaYd < 0 : deltaYd > 0) : null;
+      const wkGood = deltaWk !== null ? (lowerIsBetter ? deltaWk < 0 : deltaWk > 0) : null;
+
+      return { key, label, unit, cur, deltaYd, deltaWk, ydGood, wkGood, lowerIsBetter };
+    });
+
+  return { latest, yesterday, lastWeek, rows };
+}
+
+function formatDelta(delta, unit, isGood) {
+  if (delta === null) return '<span class="delta-badge delta-neutral">—</span>';
+  const sign = delta > 0 ? '+' : '';
+  const cls = isGood === null ? 'delta-neutral' : isGood ? 'delta-good' : 'delta-bad';
+  const arrow = delta === 0 ? '→' : isGood ? '↓' : '↑';
+  return `<span class="delta-badge ${cls}">${arrow}${sign}${delta}${unit}</span>`;
 }
 
 function renderFoodLog() {
@@ -1590,42 +1744,79 @@ function renderBody() {
   document.getElementById('bodyDisplay').style.display = 'block';
 
   const grid = document.getElementById('bodyGrid');
-  const items = [
-    { label: 'Weight', val: latest.weight, unit: 'kg', color: 'var(--text)' },
-    { label: 'Body Fat', val: latest.fat, unit: '%', color: latest.fat > 25 ? 'var(--red)' : latest.fat > 18 ? 'var(--yellow)' : 'var(--accent2)' },
-    { label: 'Muscle', val: latest.muscle, unit: 'kg', color: 'var(--accent)' },
-    { label: 'Visceral Fat', val: latest.visceral, unit: '', color: latest.visceral > 12 ? 'var(--red)' : 'var(--accent2)' },
-  ].filter(i => i.val);
 
-  grid.innerHTML = items.map(i => `
+  // All possible fields with smart coloring
+  const allFields = [
+    { label: 'Weight',           val: latest.weight,         unit: 'kg', color: 'var(--text)' },
+    { label: 'BMI',              val: latest.bmi,            unit: '',   color: latest.bmi > 25 ? 'var(--yellow)' : latest.bmi > 30 ? 'var(--red)' : 'var(--accent2)' },
+    { label: 'Body Fat',         val: latest.fat,            unit: '%',  color: latest.fat > 25 ? 'var(--red)' : latest.fat > 18 ? 'var(--yellow)' : 'var(--accent2)' },
+    { label: 'Subcutaneous Fat', val: latest.subcutaneous,   unit: '%',  color: latest.subcutaneous > 22 ? 'var(--red)' : 'var(--yellow)' },
+    { label: 'Visceral Fat',     val: latest.visceral,       unit: '',   color: latest.visceral > 12 ? 'var(--red)' : latest.visceral > 9 ? 'var(--yellow)' : 'var(--accent2)' },
+    { label: 'Muscle Mass',      val: latest.muscle,         unit: 'kg', color: 'var(--accent)' },
+    { label: 'Skeletal Muscle',  val: latest.skeletalMuscle, unit: '%',  color: 'var(--accent)' },
+    { label: 'Protein Mass',     val: latest.protein,        unit: 'kg', color: 'var(--accent2)' },
+    { label: 'Bone Mass',        val: latest.bone,           unit: 'kg', color: 'var(--text2)' },
+    { label: 'Body Water',       val: latest.water,          unit: '%',  color: latest.water < 50 ? 'var(--yellow)' : 'var(--accent2)' },
+    { label: 'Lean Mass',        val: latest.lean,           unit: 'kg', color: 'var(--accent)' },
+    { label: 'Metabolic Age',    val: latest.metabolicAge,   unit: 'yr', color: 'var(--text2)' },
+    { label: 'BMR',              val: latest.bmr,            unit: 'kcal', color: 'var(--text2)' },
+  ].filter(i => i.val !== null && i.val !== undefined);
+
+  grid.innerHTML = allFields.map(i => `
     <div class="body-metric">
       <div class="body-metric-val" style="color:${i.color}">${i.val}<span class="body-metric-unit">${i.unit}</span></div>
       <div class="body-metric-label">${i.label}</div>
     </div>
   `).join('');
 
-  // Body insight
+  // Insights
   const ins = [];
   if (latest.fat && latest.fat > 25) ins.push('⚠ Body fat elevated. Focus on caloric deficit + strength training.');
-  if (latest.visceral && latest.visceral > 12) ins.push('⚠ Visceral fat risk zone (>12). Prioritize cardio and reduce refined carbs.');
+  if (latest.visceral && latest.visceral > 12) ins.push('⚠ Visceral fat risk zone (>12). Prioritize cardio, reduce refined carbs.');
+  if (latest.subcutaneous && latest.subcutaneous > 22) ins.push('⚠ Subcutaneous fat high. Consistent cardio + calorie tracking helps.');
+  if (latest.water && latest.water < 50) ins.push('⚠ Body water low — stay hydrated (aim 2.5L+/day).');
+  if (latest.bmi && latest.bmi > 27.5) ins.push(`⚠ BMI ${latest.bmi} is above healthy range. Focus on body recomposition.`);
   if (metrics.length >= 2) {
     const prev = metrics[metrics.length - 2];
-    if (prev.fat && latest.fat < prev.fat) ins.push(`✓ Fat decreased by ${(prev.fat - latest.fat).toFixed(1)}% — great progress!`);
-    if (prev.muscle && latest.muscle < prev.muscle) ins.push(`↓ Muscle decreased. Ensure adequate protein (90–120g/day).`);
+    if (prev.fat && latest.fat && latest.fat < prev.fat) ins.push(`✓ Fat ↓ ${(prev.fat - latest.fat).toFixed(1)}% since last reading!`);
+    if (prev.muscle && latest.muscle && latest.muscle < prev.muscle) ins.push(`↓ Muscle mass dropped. Increase protein to 90–120g/day.`);
+    if (prev.weight && latest.weight && latest.weight < prev.weight) ins.push(`✓ Weight ↓ ${(prev.weight - latest.weight).toFixed(1)}kg since last reading.`);
   }
-  if (ins.length === 0 && latest.fat) {
-    ins.push(latest.fat <= 18 ? '✓ Body composition looks healthy. Keep it up!' : 'Track consistently to see trends over time.');
+  if (ins.length === 0) ins.push('Track consistently to see trends over time. Aim for weekly measurements.');
+  document.getElementById('bodyInsight').innerHTML = ins.join('<br/>');
+
+  // Comparison table (vs yesterday & last week)
+  const comp = getBodyComparison();
+  const compSection = document.getElementById('bodyCompSection');
+  if (comp && comp.rows.length > 0) {
+    compSection.style.display = 'block';
+    const ydLabel  = comp.yesterday ? comp.yesterday.date : null;
+    const wkLabel  = comp.lastWeek  ? comp.lastWeek.date  : null;
+
+    document.getElementById('bodyCompTable').innerHTML = comp.rows.map(r => {
+      const col = r.key === 'weight' ? 'var(--text)' :
+                  ['fat','subcutaneous','visceral','bmi'].includes(r.key)
+                    ? (r.cur > 25 ? 'var(--red)' : r.cur > 18 ? 'var(--yellow)' : 'var(--accent2)')
+                    : 'var(--accent)';
+      return `<div class="body-comp-row">
+        <div class="body-comp-label">${r.label}</div>
+        <div class="body-comp-cur" style="color:${col}">${r.cur}${r.unit}</div>
+        <div class="body-comp-yd">${r.deltaYd !== null ? formatDelta(r.deltaYd, r.unit, r.ydGood) : '<span style="font-size:9px;color:var(--text3)">—</span>'}</div>
+        <div class="body-comp-wk">${r.deltaWk !== null ? formatDelta(r.deltaWk, r.unit, r.wkGood) : '<span style="font-size:9px;color:var(--text3)">—</span>'}</div>
+      </div>`;
+    }).join('');
+  } else {
+    compSection.style.display = 'none';
   }
-  document.getElementById('bodyInsight').innerHTML = ins.join('<br/>') || 'Track consistently to see trends.';
 
   // History
   if (metrics.length > 1) {
     document.getElementById('bodyHistorySection').style.display = 'block';
-    document.getElementById('bodyHistoryList').innerHTML = metrics.slice().reverse().slice(0,5).map(m => `
+    document.getElementById('bodyHistoryList').innerHTML = metrics.slice().reverse().slice(0, 6).map(m => `
       <div class="meal-item">
-        <div style="font-size:9px;color:var(--text3);width:70px">${m.date}</div>
+        <div style="font-size:9px;color:var(--text3);width:66px">${m.date}</div>
         <div style="flex:1;font-size:11px">${m.weight ? m.weight + 'kg' : '—'} · ${m.fat ? m.fat + '% fat' : '—'}</div>
-        <div style="font-size:10px;color:var(--accent)">${m.muscle ? m.muscle + 'kg muscle' : ''}</div>
+        <div style="font-size:10px;color:var(--accent)">${m.muscle ? m.muscle + 'kg mus' : m.lean ? m.lean + 'kg lean' : ''}</div>
       </div>
     `).join('');
   }
@@ -2037,27 +2228,61 @@ async function scanBodyScreenshot(input) {
   await runOCR(input.files[0], 'bodyOcrResult', (result, cid) => {
     const d = window.OCREngine.parseBody(result.rawText);
     const el = document.getElementById(cid);
-    if (!d.weight && !d.bodyFat) {
-      el.innerHTML = `<div class="insight-box">⚠ No body data found. Ensure weight and body fat % are visible.</div>`; return;
+    const hasData = d.weight || d.bodyFat || d.muscleMass || d.visceralFat || d.subcutaneousFat || d.proteinMass;
+    if (!hasData) {
+      el.innerHTML = `<div class="insight-box">⚠ No body data found. Ensure weight and body fat % are visible.<br/><small style="color:var(--text3);font-size:9px">Raw: ${result.rawText.slice(0,150)}</small></div>`; return;
     }
+    const fields = [
+      ['Weight',           d.weight,          'kg'],
+      ['BMI',              d.bmi,             ''],
+      ['Body Fat',         d.bodyFat,         '%'],
+      ['Subcutaneous Fat', d.subcutaneousFat, '%'],
+      ['Visceral Fat',     d.visceralFat,     ''],
+      ['Muscle Mass',      d.muscleMass,      'kg'],
+      ['Skeletal Muscle',  d.skeletalMuscle,  '%'],
+      ['Protein Mass',     d.proteinMass,     'kg'],
+      ['Bone Mass',        d.boneMass,        'kg'],
+      ['Body Water',       d.bodyWater,       '%'],
+      ['Lean Mass',        d.leanMass,        'kg'],
+      ['Metabolic Age',    d.metabolicAge,    'yrs'],
+      ['BMR',              d.bmr,             'kcal'],
+    ].filter(([,v]) => v !== null && v !== undefined);
     let html = '<div class="ocr-extracted"><div style="font-size:10px;color:var(--accent);margin-bottom:8px">✓ BODY DATA EXTRACTED</div>';
-    if (d.weight) html += `<div class="ocr-row"><span>Weight</span><span class="ocr-val">${d.weight} kg</span></div>`;
-    if (d.bodyFat) html += `<div class="ocr-row"><span>Body Fat</span><span class="ocr-val">${d.bodyFat}%</span></div>`;
-    if (d.muscle) html += `<div class="ocr-row"><span>Muscle Mass</span><span class="ocr-val">${d.muscle} kg</span></div>`;
-    if (d.bmi) html += `<div class="ocr-row"><span>BMI</span><span class="ocr-val">${d.bmi}</span></div>`;
-    if (d.visceral) html += `<div class="ocr-row"><span>Visceral Fat</span><span class="ocr-val">${d.visceral}</span></div>`;
-    if (d.water) html += `<div class="ocr-row"><span>Body Water</span><span class="ocr-val">${d.water}%</span></div>`;
+    html += fields.map(([label, val, unit]) =>
+      `<div class="ocr-row"><span>${label}</span><span class="ocr-val">${val}${unit}</span></div>`
+    ).join('');
     html += `</div><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick='applyBodyOcr(${JSON.stringify(d).replace(/'/g,"&#39;")})'>✓ Save These Metrics</button>`;
     el.innerHTML = html;
   });
 }
 
 function applyBodyOcr(d) {
-  if (d.weight) document.getElementById('bodyWeight').value = d.weight;
-  if (d.bodyFat) document.getElementById('bodyFat').value = d.bodyFat;
-  if (d.muscle) document.getElementById('bodyMuscle').value = d.muscle;
-  if (d.visceral) document.getElementById('bodyVisceral').value = d.visceral;
-  saveBodyMetrics();
+  if (d.weight)   document.getElementById('bodyWeight').value   = d.weight;
+  if (d.bodyFat)  document.getElementById('bodyFat').value      = d.bodyFat;
+  if (d.muscleMass) document.getElementById('bodyMuscle').value = d.muscleMass;
+  if (d.visceralFat) document.getElementById('bodyVisceral').value = d.visceralFat;
+  // Save extended metrics into state directly
+  const entry = {
+    date: todayStr(),
+    weight: d.weight || null,
+    fat: d.bodyFat || null,
+    muscle: d.muscleMass || null,
+    visceral: d.visceralFat || null,
+    subcutaneous: d.subcutaneousFat || null,
+    skeletalMuscle: d.skeletalMuscle || null,
+    protein: d.proteinMass || null,
+    bone: d.boneMass || null,
+    water: d.bodyWater || null,
+    lean: d.leanMass || null,
+    bmi: d.bmi || null,
+    metabolicAge: d.metabolicAge || null,
+    bmr: d.bmr || null,
+  };
+  S.bodyMetrics.push(entry);
+  S.lastBodyMetrics = entry;
+  save(S);
+  renderAll();
+  showToast('Body metrics saved from screenshot ✓');
 }
 
 // ─── FOOD LABEL SCAN ───
