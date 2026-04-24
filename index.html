@@ -2136,6 +2136,12 @@ async function testGeminiKey() {
   resultEl.textContent = '⏳ Testing key against all Gemini models...';
 
   const MODELS = [
+    // Paid / Tier 1 accounts (versioned model names)
+    { ver: 'v1beta', name: 'gemini-2.0-flash-001' },
+    { ver: 'v1beta', name: 'gemini-2.5-flash-preview-04-17' },
+    { ver: 'v1beta', name: 'gemini-1.5-flash-002' },
+    { ver: 'v1beta', name: 'gemini-1.5-flash-001' },
+    // Free tier / latest aliases
     { ver: 'v1beta', name: 'gemini-2.0-flash' },
     { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
     { ver: 'v1beta', name: 'gemini-1.5-flash' },
@@ -2168,12 +2174,23 @@ async function testGeminiKey() {
   }
 
   const anyWorked = results.some(r => r.startsWith('✓'));
+
+  // Auto-save first working model so app uses it directly next time
+  if (anyWorked) {
+    const winIdx = results.findIndex(r => r.startsWith('✓'));
+    if (winIdx >= 0 && MODELS[winIdx]) {
+      S.settings.geminiWorkingModel = MODELS[winIdx];
+      save(S);
+      renderApiKeyStatus();
+    }
+  }
+
   resultEl.style.background = anyWorked ? 'rgba(200,255,0,0.08)' : 'rgba(255,68,102,0.1)';
   resultEl.style.color = anyWorked ? 'var(--accent)' : 'var(--red)';
   resultEl.innerHTML = results.map(r =>
     `<div style="margin-bottom:2px;color:${r.startsWith('✓') ? 'var(--accent)' : 'var(--text3)'}">${r}</div>`
   ).join('') + (anyWorked
-    ? '<div style="margin-top:6px;color:var(--accent)">✓ Key is valid! Photo features enabled.</div>'
+    ? `<div style="margin-top:6px;color:var(--accent)">✓ Key valid! Working model saved — photo features ready.</div>`
     : '<div style="margin-top:6px;color:var(--red)">✗ Key has no access. Try generating a new key at aistudio.google.com</div>'
   );
 }
@@ -2198,12 +2215,15 @@ function renderApiKeyStatus() {
   const el = document.getElementById('apiKeyStatus');
   if (!el) return;
   const key = S.settings && S.settings.geminiApiKey;
+  const model = S.settings && S.settings.geminiWorkingModel;
   if (key) {
     el.style.display = 'block';
     el.style.background = 'rgba(200,255,0,0.08)';
     el.style.color = 'var(--accent)';
     el.style.border = '1px solid rgba(200,255,0,0.2)';
-    el.textContent = '✓ Gemini key active — photo food detection & body scan enabled';
+    el.textContent = model
+      ? `✓ Gemini active — using ${model.name}`
+      : '✓ Gemini key active — tap Test to find working model';
   } else {
     el.style.display = 'none';
   }
@@ -2551,6 +2571,12 @@ async function callGeminiVision(file, prompt) {
 
   // Try models in order — different API keys may have access to different models
   const GEMINI_MODELS = [
+    // Paid / Tier 1 accounts (explicit version numbers)
+    { ver: 'v1beta', name: 'gemini-2.0-flash-001' },
+    { ver: 'v1beta', name: 'gemini-2.5-flash-preview-04-17' },
+    { ver: 'v1beta', name: 'gemini-1.5-flash-002' },
+    { ver: 'v1beta', name: 'gemini-1.5-flash-001' },
+    // Free tier / latest aliases
     { ver: 'v1beta', name: 'gemini-2.0-flash' },
     { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
     { ver: 'v1beta', name: 'gemini-1.5-flash' },
@@ -2569,7 +2595,14 @@ async function callGeminiVision(file, prompt) {
   };
 
   let lastError = 'No model worked';
-  for (const { ver, name } of GEMINI_MODELS) {
+
+  // Use cached working model first if available
+  const cachedModel = S.settings && S.settings.geminiWorkingModel;
+  const orderedModels = cachedModel
+    ? [cachedModel, ...GEMINI_MODELS.filter(m => m.name !== cachedModel.name)]
+    : GEMINI_MODELS;
+
+  for (const { ver, name } of orderedModels) {
     try {
       const url = `https://generativelanguage.googleapis.com/${ver}/models/${name}:generateContent?key=${key}`;
       const resp = await fetch(url, {
@@ -2581,14 +2614,20 @@ async function callGeminiVision(file, prompt) {
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         lastError = err?.error?.message || `HTTP ${resp.status}`;
-        // 404 = model not found, try next. 400/403 = key issue, stop.
         if (resp.status === 400 || resp.status === 403) break;
-        continue; // try next model on 404
+        continue;
       }
 
       const data = await resp.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) return text;
+      if (text) {
+        // Cache the working model for next time
+        if (!S.settings.geminiWorkingModel || S.settings.geminiWorkingModel.name !== name) {
+          S.settings.geminiWorkingModel = { ver, name };
+          save(S);
+        }
+        return text;
+      }
       lastError = 'Empty response';
     } catch (e) {
       lastError = e.message;
