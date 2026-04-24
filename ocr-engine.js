@@ -19,7 +19,7 @@ window.OCREngine = {
     const t = text.toLowerCase();
     if (/steps|move min|heart pts|\.[\d]+\s*km/i.test(t)) return 'fitness';
     if (/workout|back.biceps|chest|shoulder|legs?|routine|sets|reps/i.test(t)) return 'workout';
-    if (/body fat|subcutaneous|visceral fat|muscle mass|bone mass|protein.*kg|fat mass|lean|bmi|body water/i.test(t)) return 'body';
+    if (/body fat|subcutaneous|visceral|muscle mass|bone mass|protein|fat mass|lean|bmi|body water|moisture rate|obesity level|standard weight/i.test(t)) return 'body';
     if (/serving size|total fat|sodium|carbohydrate|dietary fiber|nutrition facts/i.test(t)) return 'food_label';
     return 'unknown';
   },
@@ -151,86 +151,162 @@ window.OCREngine = {
   },
 
   // ─────────────────────────────────────────────
-  //  BODY SCALE PARSER — expanded metrics
+  //  BODY SCALE PARSER v3
+  //
+  //  Handles TWO common layouts:
+  //
+  //  Layout A (label: value)  — most apps
+  //    "Body Fat: 21.6%"
+  //    "Muscle Mass: 56.9kg"
+  //
+  //  Layout B (value  label)  — your scale app
+  //    "79.45kg  Weight"
+  //    "21.6%   Body Fat Rate"
+  //    "56.9kg  Muscle Mass"
+  //    "1582Kcal  BMR"
+  //
+  //  Strategy: For each line, check BOTH directions.
+  //  Also handle same-line "VALUE  small-delta  LABEL" format.
   // ─────────────────────────────────────────────
   parseBody(text) {
     const result = {
-      weight: null, bmi: null,
+      weight: null, bmi: null, heartRate: null,
       bodyFat: null, subcutaneousFat: null, visceralFat: null,
       muscleMass: null, skeletalMuscle: null,
-      proteinMass: null, boneMass: null,
+      proteinPct: null, boneMass: null,
       bodyWater: null, leanMass: null,
       metabolicAge: null, bmr: null,
+      obesityLevel: null, standardWeight: null, bodyType: null,
     };
 
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-    // Helper: search for a value near a label in the lines array
-    function nearLabel(regex) {
+    // ── METRIC DEFINITIONS ──
+    // Each entry: [resultKey, labelRegexes[], valueType, unit]
+    // valueType: 'kg' | 'pct' | 'num' | 'kcal' | 'bpm' | 'str'
+    const METRICS = [
+      // key                labelPatterns                                              type
+      ['weight',          [/\bweight\b/i, /body\s*weight/i],                         'kg'  ],
+      ['bmi',             [/\bbmi\b/i, /obesity\s*level/i],                          'num' ],
+      ['heartRate',       [/heart\s*rate/i, /pulse/i],                               'bpm' ],
+      ['bodyFat',         [/body\s*fat\s*(?:rate|%|percent)?(?!\s*\(sub)/i,
+                           /fat\s*rate/i],                                            'pct' ],
+      ['subcutaneousFat', [/subcutaneous\s*fat\s*(?:percentage|%)?/i,
+                           /subcut/i],                                                'pct' ],
+      ['visceralFat',     [/visceral\s*fat/i, /visceral/i],                          'num' ],
+      ['muscleMass',      [/muscle\s*mass/i, /skeletal\s*muscle\s*mass/i],           'kg'  ],
+      ['skeletalMuscle',  [/skeletal\s*muscle\s*(?:rate|%)?/i],                      'pct' ],
+      ['proteinPct',      [/\bprotein\b/i],                                          'pct' ],
+      ['boneMass',        [/bone\s*mass/i, /bone\s*density/i],                       'kg'  ],
+      ['bodyWater',       [/body\s*(?:moisture|water)\s*(?:rate|%)?/i,
+                           /moisture\s*rate/i],                                       'pct' ],
+      ['leanMass',        [/lean\s*body\s*mass/i, /lean\s*mass/i],                  'kg'  ],
+      ['metabolicAge',    [/metabolic\s*age/i, /body\s*age/i],                       'num' ],
+      ['bmr',             [/\bbmr\b/i, /basal\s*metabolic/i],                        'kcal'],
+      ['standardWeight',  [/standard\s*weight/i],                                    'kg'  ],
+      ['bodyType',        [/body\s*type/i],                                           'str' ],
+    ];
+
+    // ── NUMBER EXTRACTOR ──
+    // Extracts the PRIMARY value from a string (first/largest meaningful number)
+    function extractNum(str, type) {
+      if (type === 'str') {
+        // For body type, extract word like Standard/Athletic/Obese
+        const m = str.match(/\b(standard|athletic|obese|slim|fit|normal|overfat)\b/i);
+        return m ? m[1] : null;
+      }
+      // Strip small delta values like "↓ 0.2kg" or "◎ 0.5kg" or "26bpm" after main value
+      // These appear as small secondary numbers in the scale app
+      // The main value is always the FIRST or LARGEST number on the line
+      const nums = str.match(/\d{1,4}(?:\.\d+)?/g) || [];
+      if (!nums.length) return null;
+      if (type === 'kcal') {
+        // BMR is 3-4 digits like 1582
+        const big = nums.find(n => parseFloat(n) > 500);
+        return big ? parseFloat(big) : null;
+      }
+      if (type === 'bpm') {
+        const bpm = nums.find(n => parseFloat(n) >= 40 && parseFloat(n) <= 220);
+        return bpm ? parseFloat(bpm) : null;
+      }
+      // For kg/pct/num: take the first number (main value, delta comes after)
+      return parseFloat(nums[0]);
+    }
+
+    // ── BIDIRECTIONAL LINE SCANNER ──
+    // For each line, check if it contains a label AND value together
+    // OR if the label is on adjacent line with value on current line
+    function scanMetric(labelRegexes, type) {
       for (let i = 0; i < lines.length; i++) {
-        if (regex.test(lines[i])) {
-          // inline number
-          const inline = lines[i].replace(regex, '').match(/(\d{1,3}(?:\.\d+)?)/);
-          if (inline) return parseFloat(inline[1]);
-          // next line number
+        const line = lines[i];
+        const isLabel = labelRegexes.some(r => r.test(line));
+
+        if (isLabel) {
+          // Layout A: label line itself has inline number → "BMI: 25.0" or "BMI 25.0"
+          const inlineNum = extractNum(line.replace(labelRegexes.find(r => r.test(line)), ''), type);
+          if (inlineNum !== null) return inlineNum;
+
+          // Layout A continued: value on NEXT line → label\nvalue
           if (lines[i + 1]) {
-            const nxt = lines[i + 1].match(/^(\d{1,3}(?:\.\d+)?)/);
-            if (nxt) return parseFloat(nxt[1]);
+            const nxt = extractNum(lines[i + 1], type);
+            if (nxt !== null) return nxt;
           }
-          // previous line number
+          // value on PREVIOUS line
           if (lines[i - 1]) {
-            const prv = lines[i - 1].match(/(\d{1,3}(?:\.\d+)?)$/);
-            if (prv) return parseFloat(prv[1]);
+            const prv = extractNum(lines[i - 1], type);
+            if (prv !== null) return prv;
           }
+        }
+
+        // Layout B: value is ON THIS LINE, label is on SAME LINE after value
+        // e.g. "21.6% ◎ 0.2% Body Fat Rate"
+        // e.g. "56.9kg ◎ 0.2kg Muscle Mass"
+        const hasLabel = labelRegexes.some(r => r.test(line));
+        if (hasLabel) {
+          // Already handled above — but extract first number from full line
+          const fullNum = extractNum(line, type);
+          if (fullNum !== null) return fullNum;
         }
       }
       return null;
     }
 
-    // Weight
-    const wm = text.match(/(\d{2,3}(?:\.\d+)?)\s*kg(?!\s*\/)/i) ||
-               text.match(/weight[:\s]+(\d{2,3}(?:\.\d+)?)/i) ||
-               text.match(/(\d{2,3}(?:\.\d+)?)\s*lbs?/i);
-    if (wm) {
-      let w = parseFloat(wm[1]);
-      if (/lbs?/i.test(wm[0])) w *= 0.453592;
-      result.weight = Math.round(w * 10) / 10;
+    // Run all metrics
+    for (const [key, labels, type] of METRICS) {
+      const val = scanMetric(labels, type);
+      if (val !== null) result[key] = val;
     }
 
-    result.bmi             = nearLabel(/\bbmi\b/i);
-    result.bodyFat         = nearLabel(/body\s*fat\s*(?:%|percent)?(?!\s*\(sub)/i);
-    result.subcutaneousFat = nearLabel(/subcutaneous|subcut/i);
-    result.visceralFat     = nearLabel(/visceral\s*(?:fat)?/i);
-    result.muscleMass      = nearLabel(/muscle\s*mass/i);
-    result.skeletalMuscle  = nearLabel(/skeletal\s*muscle/i);
-    result.proteinMass     = nearLabel(/\bprotein\b/i);
-    result.boneMass        = nearLabel(/bone\s*(?:mass|density)?/i);
-    result.bodyWater       = nearLabel(/body\s*water|water\s*(?:%|content)?/i);
-    result.leanMass        = nearLabel(/lean\s*(?:body\s*)?(?:mass)?/i);
-    result.metabolicAge    = nearLabel(/metabolic\s*age/i);
-    result.bmr             = nearLabel(/\bbmr\b|basal\s*metabolic/i);
-
-    // Regex fallbacks for common scale app formats
-    const fallbacks = [
-      [/body\s*fat[:\s%]+(\d{1,2}(?:\.\d+)?)/i,         'bodyFat'],
-      [/subcutaneous[^%\d]*(\d{1,2}(?:\.\d+)?)/i,       'subcutaneousFat'],
-      [/visceral[^%\d]*(\d{1,2}(?:\.\d+)?)/i,           'visceralFat'],
-      [/muscle\s*mass[:\s]+(\d{1,3}(?:\.\d+)?)/i,       'muscleMass'],
-      [/skeletal[^%\d]*(\d{1,2}(?:\.\d+)?)/i,           'skeletalMuscle'],
-      [/protein[:\s]+(\d{1,3}(?:\.\d+)?)\s*(?:kg|%)/i,  'proteinMass'],
-      [/bone[:\s]+(\d{1,3}(?:\.\d+)?)\s*kg/i,           'boneMass'],
-      [/water[:\s]+(\d{1,2}(?:\.\d+)?)\s*%/i,           'bodyWater'],
-      [/lean[:\s]+(\d{1,3}(?:\.\d+)?)\s*kg/i,           'leanMass'],
-      [/metabolic\s*age[:\s]+(\d{1,3})/i,               'metabolicAge'],
-      [/bmr[:\s]+(\d{3,5})/i,                           'bmr'],
-      [/bmi[:\s]+(\d{1,2}(?:\.\d+)?)/i,                 'bmi'],
-    ];
-    for (const [rx, key] of fallbacks) {
-      if (!result[key]) {
-        const m = text.match(rx);
-        if (m) result[key] = parseFloat(m[1]);
+    // ── WEIGHT special case: most reliable — look for XXkg pattern ──
+    if (!result.weight) {
+      // Find the most prominent kg value (usually largest on screen, shown in big circle)
+      const kgMatches = [...text.matchAll(/(\d{2,3}(?:\.\d+)?)\s*kg/gi)];
+      if (kgMatches.length) {
+        // Take the first one that looks like a body weight (40–200kg)
+        for (const m of kgMatches) {
+          const w = parseFloat(m[1]);
+          if (w >= 30 && w <= 250) { result.weight = w; break; }
+        }
       }
     }
+
+    // ── Convert lbs if needed ──
+    if (result.weight && result.weight < 30) result.weight = null; // invalid
+    if (result.weight) {
+      const lbsMatch = text.match(/(\d{2,3}(?:\.\d+)?)\s*lbs/i);
+      if (lbsMatch && !text.match(/\d{2,3}(?:\.\d+)?\s*kg/i)) {
+        result.weight = Math.round(parseFloat(lbsMatch[1]) * 0.453592 * 10) / 10;
+      }
+    }
+
+    // ── BMR: Kcal variant ("1582Kcal") ──
+    if (!result.bmr) {
+      const bmrMatch = text.match(/(\d{3,5})\s*(?:K?cal|kcal)/i);
+      if (bmrMatch && parseFloat(bmrMatch[1]) > 500) result.bmr = parseFloat(bmrMatch[1]);
+    }
+
+    // ── Obesity Level = BMI equivalent in some apps ──
+    if (!result.bmi && result.obesityLevel) result.bmi = result.obesityLevel;
 
     return result;
   },

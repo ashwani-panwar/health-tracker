@@ -1617,11 +1617,12 @@ function getBodyComparison() {
     ['visceral',      'Visceral Fat',     '',     true],
     ['muscle',        'Muscle Mass',      'kg',   false],
     ['skeletalMuscle','Skeletal Muscle',  '%',    false],
-    ['protein',       'Protein Mass',     'kg',   false],
+    ['protein',       'Protein',          '%',    false],
     ['bone',          'Bone Mass',        'kg',   false],
     ['water',         'Body Water',       '%',    false],
-    ['lean',          'Lean Mass',        'kg',   false],
+    ['lean',          'Lean Body Mass',   'kg',   false],
     ['bmi',           'BMI',              '',     true],
+    ['bmr',           'BMR',              'kcal', false],
   ];
 
   const rows = metricDefs
@@ -1747,19 +1748,22 @@ function renderBody() {
 
   // All possible fields with smart coloring
   const allFields = [
-    { label: 'Weight',           val: latest.weight,         unit: 'kg', color: 'var(--text)' },
-    { label: 'BMI',              val: latest.bmi,            unit: '',   color: latest.bmi > 25 ? 'var(--yellow)' : latest.bmi > 30 ? 'var(--red)' : 'var(--accent2)' },
-    { label: 'Body Fat',         val: latest.fat,            unit: '%',  color: latest.fat > 25 ? 'var(--red)' : latest.fat > 18 ? 'var(--yellow)' : 'var(--accent2)' },
-    { label: 'Subcutaneous Fat', val: latest.subcutaneous,   unit: '%',  color: latest.subcutaneous > 22 ? 'var(--red)' : 'var(--yellow)' },
-    { label: 'Visceral Fat',     val: latest.visceral,       unit: '',   color: latest.visceral > 12 ? 'var(--red)' : latest.visceral > 9 ? 'var(--yellow)' : 'var(--accent2)' },
-    { label: 'Muscle Mass',      val: latest.muscle,         unit: 'kg', color: 'var(--accent)' },
-    { label: 'Skeletal Muscle',  val: latest.skeletalMuscle, unit: '%',  color: 'var(--accent)' },
-    { label: 'Protein Mass',     val: latest.protein,        unit: 'kg', color: 'var(--accent2)' },
-    { label: 'Bone Mass',        val: latest.bone,           unit: 'kg', color: 'var(--text2)' },
-    { label: 'Body Water',       val: latest.water,          unit: '%',  color: latest.water < 50 ? 'var(--yellow)' : 'var(--accent2)' },
-    { label: 'Lean Mass',        val: latest.lean,           unit: 'kg', color: 'var(--accent)' },
-    { label: 'Metabolic Age',    val: latest.metabolicAge,   unit: 'yr', color: 'var(--text2)' },
-    { label: 'BMR',              val: latest.bmr,            unit: 'kcal', color: 'var(--text2)' },
+    { label: 'Weight',             val: latest.weight,         unit: 'kg',   color: 'var(--text)' },
+    { label: 'BMI',                val: latest.bmi,            unit: '',     color: !latest.bmi ? 'var(--text2)' : latest.bmi > 27.5 ? 'var(--red)' : latest.bmi > 25 ? 'var(--yellow)' : 'var(--accent2)' },
+    { label: 'Heart Rate',         val: latest.heartRate,      unit: ' bpm', color: 'var(--text2)' },
+    { label: 'Body Fat',           val: latest.fat,            unit: '%',    color: !latest.fat ? 'var(--text2)' : latest.fat > 25 ? 'var(--red)' : latest.fat > 18 ? 'var(--yellow)' : 'var(--accent2)' },
+    { label: 'Subcutaneous Fat',   val: latest.subcutaneous,   unit: '%',    color: !latest.subcutaneous ? 'var(--text2)' : latest.subcutaneous > 22 ? 'var(--red)' : 'var(--yellow)' },
+    { label: 'Visceral Fat',       val: latest.visceral,       unit: '',     color: !latest.visceral ? 'var(--text2)' : latest.visceral > 12 ? 'var(--red)' : latest.visceral > 9 ? 'var(--yellow)' : 'var(--accent2)' },
+    { label: 'Muscle Mass',        val: latest.muscle,         unit: 'kg',   color: 'var(--accent)' },
+    { label: 'Skeletal Muscle',    val: latest.skeletalMuscle, unit: '%',    color: 'var(--accent)' },
+    { label: 'Protein',            val: latest.protein,        unit: '%',    color: 'var(--accent2)' },
+    { label: 'Bone Mass',          val: latest.bone,           unit: 'kg',   color: 'var(--text2)' },
+    { label: 'Body Water',         val: latest.water,          unit: '%',    color: !latest.water ? 'var(--text2)' : latest.water < 50 ? 'var(--yellow)' : 'var(--accent2)' },
+    { label: 'Lean Body Mass',     val: latest.lean,           unit: 'kg',   color: 'var(--accent)' },
+    { label: 'BMR',                val: latest.bmr,            unit: ' kcal',color: 'var(--text2)' },
+    { label: 'Metabolic Age',      val: latest.metabolicAge,   unit: ' yrs', color: 'var(--text2)' },
+    { label: 'Standard Weight',    val: latest.standardWeight, unit: 'kg',   color: 'var(--text3)' },
+    { label: 'Body Type',          val: latest.bodyType,       unit: '',     color: 'var(--accent2)' },
   ].filter(i => i.val !== null && i.val !== undefined);
 
   grid.innerHTML = allFields.map(i => `
@@ -2228,61 +2232,73 @@ async function scanBodyScreenshot(input) {
   await runOCR(input.files[0], 'bodyOcrResult', (result, cid) => {
     const d = window.OCREngine.parseBody(result.rawText);
     const el = document.getElementById(cid);
-    const hasData = d.weight || d.bodyFat || d.muscleMass || d.visceralFat || d.subcutaneousFat || d.proteinMass;
+    const hasData = d.weight || d.bodyFat || d.muscleMass || d.visceralFat || d.subcutaneousFat || d.proteinPct || d.leanMass || d.bmr;
     if (!hasData) {
-      el.innerHTML = `<div class="insight-box">⚠ No body data found. Ensure weight and body fat % are visible.<br/><small style="color:var(--text3);font-size:9px">Raw: ${result.rawText.slice(0,150)}</small></div>`; return;
+      el.innerHTML = `<div class="insight-box">⚠ No body data found. Ensure the scale screenshot shows weight and body composition values clearly.<br/><small style="color:var(--text3);font-size:9px">Raw text: ${result.rawText.slice(0,200)}</small></div>`; return;
     }
+    // All possible display fields with new field names
     const fields = [
-      ['Weight',           d.weight,          'kg'],
-      ['BMI',              d.bmi,             ''],
-      ['Body Fat',         d.bodyFat,         '%'],
-      ['Subcutaneous Fat', d.subcutaneousFat, '%'],
-      ['Visceral Fat',     d.visceralFat,     ''],
-      ['Muscle Mass',      d.muscleMass,      'kg'],
-      ['Skeletal Muscle',  d.skeletalMuscle,  '%'],
-      ['Protein Mass',     d.proteinMass,     'kg'],
-      ['Bone Mass',        d.boneMass,        'kg'],
-      ['Body Water',       d.bodyWater,       '%'],
-      ['Lean Mass',        d.leanMass,        'kg'],
-      ['Metabolic Age',    d.metabolicAge,    'yrs'],
-      ['BMR',              d.bmr,             'kcal'],
+      ['Weight',               d.weight,          'kg'  ],
+      ['BMI',                  d.bmi,             ''    ],
+      ['Heart Rate',           d.heartRate,       ' bpm'],
+      ['Body Fat',             d.bodyFat,         '%'   ],
+      ['Subcutaneous Fat',     d.subcutaneousFat, '%'   ],
+      ['Visceral Fat',         d.visceralFat,     ''    ],
+      ['Muscle Mass',          d.muscleMass,      'kg'  ],
+      ['Skeletal Muscle',      d.skeletalMuscle,  '%'   ],
+      ['Protein',              d.proteinPct,      '%'   ],
+      ['Bone Mass',            d.boneMass,        'kg'  ],
+      ['Body Water / Moisture',d.bodyWater,       '%'   ],
+      ['Lean Body Mass',       d.leanMass,        'kg'  ],
+      ['Metabolic Age',        d.metabolicAge,    ' yrs'],
+      ['BMR',                  d.bmr,             ' kcal'],
+      ['Standard Weight',      d.standardWeight,  'kg'  ],
+      ['Body Type',            d.bodyType,        ''    ],
     ].filter(([,v]) => v !== null && v !== undefined);
-    let html = '<div class="ocr-extracted"><div style="font-size:10px;color:var(--accent);margin-bottom:8px">✓ BODY DATA EXTRACTED</div>';
+
+    const count = fields.length;
+    let html = `<div class="ocr-extracted"><div style="font-size:10px;color:var(--accent);margin-bottom:8px">✓ ${count} METRICS EXTRACTED</div>`;
     html += fields.map(([label, val, unit]) =>
       `<div class="ocr-row"><span>${label}</span><span class="ocr-val">${val}${unit}</span></div>`
     ).join('');
-    html += `</div><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick='applyBodyOcr(${JSON.stringify(d).replace(/'/g,"&#39;")})'>✓ Save These Metrics</button>`;
+    html += `</div><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick='applyBodyOcr(${JSON.stringify(d).replace(/'/g,"&#39;")})'>✓ Save All ${count} Metrics</button>`;
     el.innerHTML = html;
   });
 }
 
 function applyBodyOcr(d) {
-  if (d.weight)   document.getElementById('bodyWeight').value   = d.weight;
-  if (d.bodyFat)  document.getElementById('bodyFat').value      = d.bodyFat;
-  if (d.muscleMass) document.getElementById('bodyMuscle').value = d.muscleMass;
+  // Populate manual input fields
+  if (d.weight)     document.getElementById('bodyWeight').value   = d.weight;
+  if (d.bodyFat)    document.getElementById('bodyFat').value      = d.bodyFat;
+  if (d.muscleMass) document.getElementById('bodyMuscle').value   = d.muscleMass;
   if (d.visceralFat) document.getElementById('bodyVisceral').value = d.visceralFat;
-  // Save extended metrics into state directly
+
+  // Build full entry with all new field names
   const entry = {
-    date: todayStr(),
-    weight: d.weight || null,
-    fat: d.bodyFat || null,
-    muscle: d.muscleMass || null,
-    visceral: d.visceralFat || null,
-    subcutaneous: d.subcutaneousFat || null,
-    skeletalMuscle: d.skeletalMuscle || null,
-    protein: d.proteinMass || null,
-    bone: d.boneMass || null,
-    water: d.bodyWater || null,
-    lean: d.leanMass || null,
-    bmi: d.bmi || null,
-    metabolicAge: d.metabolicAge || null,
-    bmr: d.bmr || null,
+    date:           todayStr(),
+    weight:         d.weight          || null,
+    fat:            d.bodyFat         || null,
+    muscle:         d.muscleMass      || null,
+    visceral:       d.visceralFat     || null,
+    subcutaneous:   d.subcutaneousFat || null,
+    skeletalMuscle: d.skeletalMuscle  || null,
+    protein:        d.proteinPct      || null,
+    bone:           d.boneMass        || null,
+    water:          d.bodyWater       || null,
+    lean:           d.leanMass        || null,
+    bmi:            d.bmi             || null,
+    heartRate:      d.heartRate       || null,
+    metabolicAge:   d.metabolicAge    || null,
+    bmr:            d.bmr             || null,
+    standardWeight: d.standardWeight  || null,
+    bodyType:       d.bodyType        || null,
   };
   S.bodyMetrics.push(entry);
   S.lastBodyMetrics = entry;
   save(S);
   renderAll();
-  showToast('Body metrics saved from screenshot ✓');
+  const count = Object.values(entry).filter(v => v !== null && v !== 'date').length;
+  showToast(`${count} body metrics saved ✓`);
 }
 
 // ─── FOOD LABEL SCAN ───
