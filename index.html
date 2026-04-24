@@ -2463,7 +2463,15 @@ async function callGeminiVision(file, prompt) {
   const b64 = await fileToBase64(file);
   const mimeType = file.type || 'image/jpeg';
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  // Try models in order — different API keys may have access to different models
+  const GEMINI_MODELS = [
+    { ver: 'v1beta', name: 'gemini-2.0-flash' },
+    { ver: 'v1beta', name: 'gemini-1.5-flash-latest' },
+    { ver: 'v1beta', name: 'gemini-1.5-flash' },
+    { ver: 'v1',     name: 'gemini-1.5-flash-latest' },
+    { ver: 'v1',     name: 'gemini-1.5-flash' },
+  ];
+
   const body = {
     contents: [{
       parts: [
@@ -2474,19 +2482,33 @@ async function callGeminiVision(file, prompt) {
     generationConfig: { temperature: 0.1, maxOutputTokens: 800 }
   };
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  let lastError = 'No model worked';
+  for (const { ver, name } of GEMINI_MODELS) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/${ver}/models/${name}:generateContent?key=${key}`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
 
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        lastError = err?.error?.message || `HTTP ${resp.status}`;
+        // 404 = model not found, try next. 400/403 = key issue, stop.
+        if (resp.status === 400 || resp.status === 403) break;
+        continue; // try next model on 404
+      }
+
+      const data = await resp.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return text;
+      lastError = 'Empty response';
+    } catch (e) {
+      lastError = e.message;
+    }
   }
-
-  const data = await resp.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  throw new Error(lastError);
 }
 
 function fileToBase64(file) {
