@@ -803,6 +803,74 @@
     .ai-item-val { font-family: 'Syne', sans-serif; font-size: 11px; color: var(--accent2); }
     .confidence-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
 
+    /* ── LIVELY THEME ── */
+    body.theme-lively {
+      --bg: #080c12;
+      --surface: #0f141cdd;
+      --surface2: #141a22cc;
+      --border: #ffffff18;
+      --border2: #ffffff22;
+      --accent: #c8ff00;
+      --accent2: #00ffc8;
+      --accent3: #ff6b35;
+      --text: #f5f5f8;
+      --text2: #aaaacc;
+      --text3: #666688;
+    }
+
+    /* Lively background per page */
+    body.theme-lively #tab-dashboard::before,
+    body.theme-lively #tab-log::before,
+    body.theme-lively #tab-activity::before,
+    body.theme-lively #tab-body::before,
+    body.theme-lively #tab-history::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+      filter: saturate(1.4) brightness(0.7);
+    }
+
+    body.theme-lively .content > .page.active > * { position: relative; z-index: 1; }
+
+    body.theme-lively #tab-dashboard.active::before {
+      background-image: url('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=60');
+    }
+    body.theme-lively #tab-log.active::before {
+      background-image: url('https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=60');
+    }
+    body.theme-lively #tab-activity.active::before {
+      background-image: url('https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=800&q=60');
+    }
+    body.theme-lively #tab-body.active::before {
+      background-image: url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=60');
+    }
+    body.theme-lively #tab-history.active::before {
+      background-image: url('https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&q=60');
+    }
+
+    /* Lively cards get glass effect */
+    body.theme-lively .card {
+      background: rgba(10, 12, 20, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    body.theme-lively .bottom-nav {
+      background: rgba(8, 12, 18, 0.92);
+      backdrop-filter: blur(20px);
+    }
+
+    /* Lively hero images on dashboard cards */
+    body.theme-lively .score-hero {
+      background: linear-gradient(135deg, rgba(200,255,0,0.08), transparent);
+    }
+
     /* Nutrient tracker */
     .nutrient-row {
       display: flex;
@@ -1187,6 +1255,53 @@
 
       <div class="section-title">Activity <span>daily movement</span></div>
 
+      <!-- GOOGLE FIT SYNC -->
+      <div class="card" id="googleFitCard" style="border-color:rgba(66,133,244,0.3);background:linear-gradient(135deg,rgba(66,133,244,0.06),transparent)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <!-- Google Fit icon -->
+          <svg width="32" height="32" viewBox="0 0 32 32">
+            <circle cx="16" cy="16" r="15" fill="#fff" stroke="#e0e0e0" stroke-width="1"/>
+            <path d="M8 16a8 8 0 1 1 16 0 8 8 0 0 1-16 0z" fill="#fff"/>
+            <path d="M16 9l2 4h-4z" fill="#EA4335"/>
+            <path d="M23 16l-4 2v-4z" fill="#4285F4"/>
+            <path d="M16 23l-2-4h4z" fill="#34A853"/>
+            <path d="M9 16l4-2v4z" fill="#FBBC05"/>
+            <circle cx="16" cy="16" r="3" fill="#fff" stroke="#aaa" stroke-width="0.5"/>
+          </svg>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--text)">Google Fit Sync</div>
+            <div style="font-size:9px;color:var(--text3)">Steps · Calories · Active minutes · Workouts</div>
+          </div>
+          <div id="gfitStatusDot" style="width:9px;height:9px;border-radius:50%;background:var(--text3);margin-left:auto;flex-shrink:0;box-shadow:0 0 6px currentColor"></div>
+        </div>
+
+        <div id="gfitStatusMsg" style="font-size:10px;color:var(--text3);margin-bottom:10px;min-height:14px"></div>
+
+        <!-- Sign in with Google button — proper Google style -->
+        <button id="gfitConnectBtn" onclick="connectGoogleFit()" style="
+          width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
+          background:#fff; color:#3c4043; border:1px solid #dadce0; border-radius:4px;
+          padding:11px 16px; font-family:'Roboto',sans-serif; font-size:14px; font-weight:500;
+          cursor:pointer; transition:box-shadow 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.12);
+          margin-bottom:8px;
+        " onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.12)'">
+          <svg width="18" height="18" viewBox="0 0 18 18">
+            <path d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z" fill="#4285F4"/>
+            <path d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z" fill="#34A853"/>
+            <path d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z" fill="#FBBC05"/>
+            <path d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z" fill="#EA4335"/>
+          </svg>
+          <span id="gfitBtnText">Sign in with Google</span>
+        </button>
+
+        <div id="gfitSyncResult" style="display:none;margin-top:8px"></div>
+
+        <div style="font-size:9px;color:var(--text3);line-height:1.6;margin-top:4px">
+          Tap to sign into your Google account. Your Google Fit data syncs automatically.<br/>
+          Only fitness data is read — no other account access.
+        </div>
+      </div>
+
       <!-- SCREENSHOT SCAN -->
       <div class="card" style="border-color:rgba(0,255,200,0.2)">
         <div class="card-label" style="color:var(--accent2)">📷 Scan Fitness App Screenshot</div>
@@ -1428,11 +1543,15 @@
         <!-- Theme -->
         <div style="margin-bottom:8px">
           <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Theme</div>
-          <div style="display:flex;gap:6px">
+          <div style="display:flex;gap:6px;margin-bottom:6px">
             <button class="btn btn-secondary" id="themeBtn-dark" onclick="setTheme('dark')" style="flex:1;font-size:10px">🌙 Dark</button>
             <button class="btn btn-secondary" id="themeBtn-light" onclick="setTheme('light')" style="flex:1;font-size:10px">☀️ Light</button>
             <button class="btn btn-secondary" id="themeBtn-auto" onclick="setTheme('auto')" style="flex:1;font-size:10px">🔄 Auto</button>
           </div>
+          <button class="btn btn-secondary" id="themeBtn-lively" onclick="setTheme('lively')" style="width:100%;font-size:10px">
+            🌄 Lively — Real food &amp; nature backgrounds
+          </button>
+          <div style="font-size:9px;color:var(--text3);margin-top:4px">Lively theme shows contextual photos on each screen</div>
         </div>
         <div class="divider"></div>
         <!-- Data Export / Import -->
@@ -2017,6 +2136,7 @@ function renderActivity() {
   const { steps, activityCals, workoutDone, workoutType, workoutDuration } = S.today;
 
   document.getElementById('actStepsDisplay').textContent = steps.toLocaleString();
+  renderGfitStatus();
 
   // Level badge
   const badge = document.getElementById('actLevelBadge');
@@ -2532,10 +2652,10 @@ function renderHistory() {
 
 // ─── THEME ───
 function setTheme(mode) {
-  document.body.classList.remove('theme-light','theme-auto');
-  if (mode === 'light') document.body.classList.add('theme-light');
-  else if (mode === 'auto') document.body.classList.add('theme-auto');
-  // dark = no class (default)
+  document.body.classList.remove('theme-light','theme-auto','theme-lively');
+  if (mode === 'light')  document.body.classList.add('theme-light');
+  else if (mode === 'auto')   document.body.classList.add('theme-auto');
+  else if (mode === 'lively') document.body.classList.add('theme-lively');
   if (!S.settings) S.settings = defaultState().settings;
   S.settings.theme = mode;
   save(S);
@@ -2545,21 +2665,320 @@ function setTheme(mode) {
 
 function applyStoredTheme() {
   const mode = S.settings && S.settings.theme || 'dark';
-  document.body.classList.remove('theme-light','theme-auto');
-  if (mode === 'light') document.body.classList.add('theme-light');
-  else if (mode === 'auto') document.body.classList.add('theme-auto');
+  document.body.classList.remove('theme-light','theme-auto','theme-lively');
+  if (mode === 'light')  document.body.classList.add('theme-light');
+  else if (mode === 'auto')   document.body.classList.add('theme-auto');
+  else if (mode === 'lively') document.body.classList.add('theme-lively');
 }
 
 function renderThemeButtons() {
   const mode = S.settings && S.settings.theme || 'dark';
-  ['dark','light','auto'].forEach(m => {
+  ['dark','light','auto','lively'].forEach(m => {
     const btn = document.getElementById(`themeBtn-${m}`);
     if (!btn) return;
-    btn.style.background = mode === m ? 'var(--accent)' : 'var(--surface2)';
-    btn.style.color      = mode === m ? '#000' : 'var(--text2)';
-    btn.style.borderColor= mode === m ? 'var(--accent)' : 'var(--border)';
+    btn.style.background  = mode === m ? 'var(--accent)' : 'var(--surface2)';
+    btn.style.color       = mode === m ? '#000' : 'var(--text2)';
+    btn.style.borderColor = mode === m ? 'var(--accent)' : 'var(--border)';
   });
 }
+
+// ═══════════════════════════════════════════
+//  GOOGLE FIT SYNC
+// ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
+//  GOOGLE FIT SYNC — 1-tap OAuth
+//  Uses implicit flow (token in URL hash)
+//  User signs into their own Google account
+//  App reads Fitness data only — no write access
+// ═══════════════════════════════════════════
+
+// ── IMPORTANT: Replace this with your own Client ID ──
+// Get it free at console.cloud.google.com:
+//   1. Create project → Enable "Fitness API"
+//   2. APIs & Services → Credentials → Create OAuth 2.0 Client ID
+//   3. Application type: Web application
+//   4. Add your GitHub Pages URL to "Authorized JavaScript origins"
+//      e.g. https://ashwani-panwar.github.io
+//   5. Paste the client_id below
+const GFIT_CLIENT_ID = (S.settings && S.settings.gfitClientId) || 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+
+const GFIT_SCOPES = [
+  'https://www.googleapis.com/auth/fitness.activity.read',
+  'https://www.googleapis.com/auth/fitness.body.read',
+  'https://www.googleapis.com/auth/fitness.heart_rate.read',
+].join(' ');
+
+function renderGfitStatus() {
+  const dot  = document.getElementById('gfitStatusDot');
+  const msg  = document.getElementById('gfitStatusMsg');
+  const btn  = document.getElementById('gfitConnectBtn');
+  const btnT = document.getElementById('gfitBtnText');
+  if (!dot) return;
+
+  const token   = S.settings && S.settings.gfitToken;
+  const expiry  = S.settings && S.settings.gfitTokenExpiry;
+  const expired = expiry && Date.now() > expiry;
+  const email   = S.settings && S.settings.gfitEmail;
+
+  if (token && !expired) {
+    dot.style.background = '#34A853';
+    dot.style.boxShadow  = '0 0 6px #34A853';
+    if (msg)  msg.textContent  = email ? `✓ Signed in as ${email}` : '✓ Connected to Google Fit';
+    if (msg)  msg.style.color  = '#34A853';
+    if (btnT) btnT.textContent = '🔄 Sync Google Fit Now';
+    if (btn)  { btn.style.background = '#f6fdf6'; btn.style.color = '#1a7a1a'; }
+  } else if (expired) {
+    delete S.settings.gfitToken;
+    save(S);
+    dot.style.background = '#FBBC04';
+    if (msg)  msg.textContent = 'Session expired — tap to re-sign in';
+    if (msg)  msg.style.color = '#FBBC04';
+    if (btnT) btnT.textContent = 'Sign in with Google';
+    if (btn)  { btn.style.background = '#fff'; btn.style.color = '#3c4043'; }
+  } else {
+    dot.style.background = '#ccc';
+    dot.style.boxShadow  = 'none';
+    if (msg)  msg.textContent = 'Not connected — tap to sign in';
+    if (msg)  msg.style.color = 'var(--text3)';
+    if (btnT) btnT.textContent = 'Sign in with Google';
+    if (btn)  { btn.style.background = '#fff'; btn.style.color = '#3c4043'; }
+  }
+}
+
+function connectGoogleFit() {
+  const token  = S.settings && S.settings.gfitToken;
+  const expiry = S.settings && S.settings.gfitTokenExpiry;
+  const expired = expiry && Date.now() > expiry;
+
+  // Already connected — sync directly
+  if (token && !expired) {
+    syncGoogleFit(token);
+    return;
+  }
+
+  // Get client ID — user's own or prompt them to set one
+  const clientId = (S.settings && S.settings.gfitClientId);
+  if (!clientId || clientId === 'YOUR_CLIENT_ID') {
+    // Show inline setup instructions
+    const el = document.getElementById('gfitSyncResult');
+    el.style.display = 'block';
+    el.innerHTML = `<div style="background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.25);border-radius:10px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:#4285F4;margin-bottom:8px">⚙ One-time setup needed</div>
+      <div style="font-size:10px;color:var(--text2);line-height:1.7;margin-bottom:10px">
+        Google requires an OAuth Client ID to connect.<br/>
+        <strong>Free setup takes 5 minutes:</strong><br/>
+        1. Go to <strong>console.cloud.google.com</strong><br/>
+        2. Create project → Enable <strong>Fitness API</strong><br/>
+        3. APIs → Credentials → <strong>Create OAuth Web Client</strong><br/>
+        4. Add <code style="color:var(--accent2);font-size:9px">${window.location.origin}</code> to Authorized Origins<br/>
+        5. Paste Client ID below
+      </div>
+      <div style="display:flex;gap:6px">
+        <input id="gfitClientIdInline" type="text" placeholder="xxxx.apps.googleusercontent.com"
+          style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:6px;
+                 padding:8px 10px;color:var(--text);font-size:11px;outline:none"/>
+        <button onclick="saveAndConnectGfit()" class="btn btn-primary" style="white-space:nowrap;font-size:11px">CONNECT</button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  // Launch OAuth popup
+  launchGfitOAuth(clientId);
+}
+
+function saveAndConnectGfit() {
+  const id = document.getElementById('gfitClientIdInline')?.value.trim();
+  if (!id || !id.includes('.apps.googleusercontent.com')) {
+    showToast('Paste your full Client ID ending in .apps.googleusercontent.com');
+    return;
+  }
+  if (!S.settings) S.settings = defaultState().settings;
+  S.settings.gfitClientId = id;
+  save(S);
+  showToast('Client ID saved — launching Google sign in...');
+  setTimeout(() => launchGfitOAuth(id), 300);
+}
+
+function launchGfitOAuth(clientId) {
+  const redirectUri = window.location.origin + window.location.pathname;
+  const state = Math.random().toString(36).slice(2);
+  sessionStorage.setItem('gfit_state', state);
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'token',
+    scope: GFIT_SCOPES,
+    state: state,
+    include_granted_scopes: 'true',
+    prompt: 'select_account',   // lets user choose which Google account
+  });
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+
+  // Open Google sign-in in a popup
+  const popup = window.open(authUrl, 'gfit_auth', 'width=480,height=620,scrollbars=yes,resizable=yes');
+
+  if (!popup) {
+    // Popup blocked — redirect instead
+    sessionStorage.setItem('gfit_redirect', 'true');
+    window.location.href = authUrl;
+    return;
+  }
+
+  showToast('Sign in with your Google account in the popup...');
+
+  // Poll popup for the token in URL hash
+  let checks = 0;
+  const poll = setInterval(() => {
+    checks++;
+    if (checks > 300) { clearInterval(poll); return; } // 2.5 min timeout
+
+    try {
+      if (popup.closed) { clearInterval(poll); return; }
+
+      const hash = popup.location.hash || popup.location.search;
+      if (!hash) return;
+
+      const params = new URLSearchParams(hash.replace(/^[#?]/, ''));
+      const token  = params.get('access_token');
+      const retState = params.get('state');
+
+      if (token && retState === sessionStorage.getItem('gfit_state')) {
+        clearInterval(poll);
+        popup.close();
+
+        // Save token (expires in 1 hour typically)
+        const expiresIn = parseInt(params.get('expires_in') || '3600');
+        S.settings.gfitToken       = token;
+        S.settings.gfitTokenExpiry = Date.now() + (expiresIn * 1000);
+        save(S);
+
+        renderGfitStatus();
+        showToast('Google account connected ✓ Syncing...');
+        syncGoogleFit(token);
+      }
+    } catch(e) {
+      // Cross-origin — popup is on google.com, ignore until redirected back
+    }
+  }, 500);
+}
+
+// Handle redirect back from OAuth (if popup was blocked)
+(function checkOAuthRedirect() {
+  const hash = window.location.hash;
+  if (!hash.includes('access_token')) return;
+  const params = new URLSearchParams(hash.substring(1));
+  const token  = params.get('access_token');
+  const state  = params.get('state');
+  if (token && state === sessionStorage.getItem('gfit_state')) {
+    history.replaceState(null, '', window.location.pathname);
+    if (!S.settings) S.settings = defaultState().settings;
+    const expiresIn = parseInt(params.get('expires_in') || '3600');
+    S.settings.gfitToken       = token;
+    S.settings.gfitTokenExpiry = Date.now() + (expiresIn * 1000);
+    save(S);
+    showToast('Google connected ✓ Syncing...');
+    setTimeout(() => syncGoogleFit(token), 500);
+  }
+})();
+
+async function syncGoogleFit(token) {
+  const el = document.getElementById('gfitSyncResult');
+  if (el) { el.style.display='block'; el.innerHTML='<div style="font-size:10px;color:var(--text2)">⏳ Fetching from Google Fit...</div>'; }
+
+  const now      = Date.now();
+  const startDay = new Date(); startDay.setHours(0,0,0,0);
+  const startMs  = startDay.getTime();
+
+  const headers = { Authorization: `Bearer ${token}` };
+
+  try {
+    // ── Aggregate: steps + calories + active minutes ──
+    const aggResp = await fetch('https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        aggregateBy: [
+          { dataTypeName: 'com.google.step_count.delta' },
+          { dataTypeName: 'com.google.calories.expended' },
+          { dataTypeName: 'com.google.active_minutes' },
+        ],
+        bucketByTime: { durationMillis: 86400000 },
+        startTimeMillis: startMs,
+        endTimeMillis: now
+      })
+    });
+
+    if (aggResp.status === 401) {
+      delete S.settings.gfitToken;
+      save(S);
+      renderGfitStatus();
+      if (el) el.innerHTML = '<div class="insight-box">⚠ Session expired. Please sign in again.</div>';
+      showToast('Session expired — please reconnect');
+      return;
+    }
+
+    const aggData = await aggResp.json();
+    let steps = 0, calories = 0, activeMin = 0;
+
+    for (const bucket of aggData.bucket || []) {
+      for (const ds of bucket.dataset || []) {
+        for (const pt of ds.point || []) {
+          const v = pt.value?.[0];
+          if (!v) continue;
+          if (ds.dataSourceId?.includes('step_count')) steps    += (v.intVal || 0);
+          if (ds.dataSourceId?.includes('calories'))   calories += (v.fpVal  || 0);
+          if (ds.dataSourceId?.includes('active_min')) activeMin+= (v.intVal || 0);
+        }
+      }
+    }
+
+    // ── Sessions: workout list ──
+    const sessResp = await fetch(
+      `https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${new Date(startMs).toISOString()}&endTime=${new Date(now).toISOString()}`,
+      { headers }
+    );
+    const sessData = await sessResp.json();
+    const sessions = (sessData.session || []).map(s => ({
+      name:     s.name || 'Workout',
+      duration: Math.round((s.endTimeMillis - s.startTimeMillis) / 60000),
+      type:     s.activityType
+    }));
+
+    // ── Apply to today ──
+    if (steps > 0)    S.today.steps = steps;
+    if (calories > 0) S.today.activityCals = Math.round(calories);
+    if (sessions.length > 0) {
+      const latest = sessions[sessions.length - 1];
+      S.today.workoutDone     = true;
+      // Activity types: 1=biking, 7=walking, 8=running, 80=strength, 97=conditioning
+      const strengthTypes = [80, 97, 93, 94, 99, 46];
+      S.today.workoutType     = strengthTypes.includes(latest.type) ? 'Strength' : 'Cardio';
+      S.today.workoutDuration = latest.duration;
+    }
+    save(S);
+    renderAll();
+
+    // ── Show result ──
+    if (el) el.innerHTML = `<div class="ocr-extracted">
+      <div style="font-size:10px;font-weight:700;color:#34A853;margin-bottom:8px">✓ GOOGLE FIT SYNCED</div>
+      ${steps    > 0 ? `<div class="ocr-row"><span>Steps</span><span class="ocr-val" style="color:#4285F4">${steps.toLocaleString()}</span></div>` : ''}
+      ${calories > 0 ? `<div class="ocr-row"><span>Calories Burned</span><span class="ocr-val" style="color:#EA4335">${Math.round(calories)} kcal</span></div>` : ''}
+      ${activeMin> 0 ? `<div class="ocr-row"><span>Active Minutes</span><span class="ocr-val" style="color:#FBBC04">${activeMin} min</span></div>` : ''}
+      ${sessions.length > 0 ? `<div class="ocr-row"><span>Workouts Today</span><span class="ocr-val" style="color:#34A853">${sessions.length} session(s)</span></div>` : ''}
+      ${steps === 0 && calories === 0 ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">No activity recorded yet today.</div>' : ''}
+    </div>`;
+    showToast(`Synced ✓  ${steps.toLocaleString()} steps today`);
+
+  } catch(e) {
+    if (el) el.innerHTML = `<div class="insight-box">⚠ ${e.message}</div>`;
+    showToast('Sync error — check connection');
+  }
+}
+
 
 // ─── EXPORT / IMPORT ───
 function exportData() {
