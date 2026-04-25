@@ -258,13 +258,19 @@ window.OCREngine = {
         return pct ? parseFloat(pct) : null;
       }
 
-      // Generic: return first reasonable number
-      // Filter out tiny delta values (< 2 when main value should be larger)
+      // Generic 'num' type (visceral fat, BMI, obesity level)
+      // These are small numbers: visceral fat 1-30, BMI 10-50, obesity 10-50
+      // If OCR merges "12.0" → "120", we detect and fix it
       const floats = allNums.map(parseFloat);
-      const max = Math.max(...floats);
-      // If max is significantly larger than first, it's probably the main value
-      if (max > floats[0] * 3 && floats[0] < 2) return max;
-      return floats[0];
+      // Visceral fat / BMI range: should never exceed 60
+      // If value > 60 and looks like it lost a decimal (e.g. 120 should be 12.0), halve/divide
+      let primary = floats[0];
+      if (primary > 60 && primary < 1000) {
+        // Likely a merged decimal: 120 → 12.0, 215 → 21.5
+        const fixed = primary / 10;
+        if (fixed >= 1 && fixed <= 60) primary = fixed;
+      }
+      return primary;
     }
 
     // ── BIDIRECTIONAL LINE SCANNER ──

@@ -803,6 +803,37 @@
     .ai-item-val { font-family: 'Syne', sans-serif; font-size: 11px; color: var(--accent2); }
     .confidence-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
 
+    /* Nutrient tracker */
+    .nutrient-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .nutrient-row:last-child { border-bottom: none; }
+    .nutrient-name { font-size: 10px; color: var(--text2); width: 72px; flex-shrink: 0; }
+    .nutrient-bar-wrap { flex: 1; height: 6px; background: var(--border2); border-radius: 3px; overflow: visible; position: relative; }
+    .nutrient-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s cubic-bezier(0.34,1.56,0.64,1); position: relative; }
+    .nutrient-bar-fill::after {
+      content: '';
+      position: absolute;
+      right: -1px; top: -2px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: inherit;
+      box-shadow: 0 0 4px currentColor;
+    }
+    .nutrient-val { font-size: 9px; color: var(--text3); width: 62px; text-align: right; flex-shrink: 0; }
+    .nutrient-deficient { color: var(--red) !important; }
+    .nutrient-ok { color: var(--accent) !important; }
+    .nutrient-excess { color: var(--yellow) !important; }
+    .deficiency-badge {
+      font-size: 8px; padding: 2px 6px; border-radius: 8px;
+      background: rgba(255,68,102,0.15); color: var(--red);
+      margin-left: 4px;
+    }
+
     /* Body visual diagram */
     .body-visual-svg { display:block; margin:0 auto; max-width:320px; width:100%; }
     .body-region { cursor:pointer; transition:opacity 0.2s; }
@@ -1143,6 +1174,12 @@
         <div style="font-size:10px;color:var(--text2)" id="mealInsight">Start logging to see insights.</div>
       </div>
 
+      <!-- NUTRIENT TRACKER -->
+      <div class="section-title" style="margin-top:4px">Nutrient Tracker <span>vs daily needs</span></div>
+      <div class="card" id="nutrientTrackerCard">
+        <div style="font-size:10px;color:var(--text3);text-align:center;padding:12px">Log meals to see nutrient breakdown</div>
+      </div>
+
     </div>
 
     <!-- ======================== ACTIVITY ======================== -->
@@ -1400,13 +1437,33 @@
         <div class="divider"></div>
         <!-- Data Export / Import -->
         <div style="margin-bottom:8px">
-          <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Data Backup</div>
-          <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;font-size:11px" onclick="exportData()">📤 Export Data (JSON file)</button>
-          <label class="btn btn-secondary" style="width:100%;text-align:center;cursor:pointer;display:block;font-size:11px">
-            📥 Import Data (restore backup)
+          <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Data Backup &amp; Transfer</div>
+
+          <!-- Export button — prominent -->
+          <button class="btn btn-primary" style="width:100%;margin-bottom:8px;font-size:12px;padding:14px" onclick="exportData()">
+            📤 Export All Data
+          </button>
+
+          <!-- Where it goes -->
+          <div style="background:rgba(200,255,0,0.06);border:1px solid rgba(200,255,0,0.15);border-radius:8px;padding:10px;margin-bottom:8px">
+            <div style="font-size:9px;color:var(--accent);letter-spacing:1px;margin-bottom:4px">WHERE IS THE FILE SAVED?</div>
+            <div style="font-size:10px;color:var(--text2);line-height:1.6">
+              📱 <strong>Android:</strong> Downloads folder<br/>
+              &nbsp;&nbsp;&nbsp;Open <em>Files</em> app → Downloads<br/>
+              &nbsp;&nbsp;&nbsp;File: <code style="color:var(--accent2);font-size:9px">vitalcore-backup-DD-Mon-YYYY.json</code><br/>
+              🍎 <strong>iPhone:</strong> Files app → Downloads<br/>
+              💻 <strong>Desktop:</strong> Browser Downloads folder
+            </div>
+          </div>
+
+          <label class="btn btn-secondary" style="width:100%;text-align:center;cursor:pointer;display:block;font-size:11px;margin-bottom:6px">
+            📥 Import / Restore Backup
             <input type="file" accept=".json" style="display:none" onchange="importData(this)" />
           </label>
-          <div style="font-size:9px;color:var(--text3);margin-top:4px;line-height:1.5">Export saves all your meals, scores, body metrics and settings as a JSON file. Import restores them on any device.</div>
+          <div style="font-size:9px;color:var(--text3);line-height:1.5">
+            Export includes: all meals, scores, body metrics, settings, streak.<br/>
+            Import on any phone to transfer your data.
+          </div>
         </div>
         <div class="divider"></div>
         <button class="btn btn-danger" style="width:100%;margin-top:4px" onclick="clearAllData()">⚠ Clear All Data</button>
@@ -1851,6 +1908,109 @@ function renderFoodLog() {
   chips.innerHTML = QUICK_FOODS.map((f, i) =>
     `<div class="chip" onclick="quickAdd(${i})">${f.name}</div>`
   ).join('');
+
+  renderNutrientTracker();
+}
+
+// ═══════════════════════════════════════════
+//  NUTRIENT TRACKER — daily intake vs needs
+// ═══════════════════════════════════════════
+
+// Daily Reference Intakes (adult, 2000 kcal diet)
+const DAILY_REQUIREMENTS = {
+  protein:   { req: 90,    unit: 'g',   label: 'Protein',   warn: 'muscle loss' },
+  carb:      { req: 250,   unit: 'g',   label: 'Carbs',     warn: 'low energy' },
+  fat:       { req: 65,    unit: 'g',   label: 'Fat',       warn: '' },
+  fibre:     { req: 30,    unit: 'g',   label: 'Fibre',     warn: 'gut health' },
+  sodium:    { req: 2300,  unit: 'mg',  label: 'Sodium',    warn: '', max: 2300 },
+  calcium:   { req: 1000,  unit: 'mg',  label: 'Calcium',   warn: 'bone health' },
+  iron:      { req: 18,    unit: 'mg',  label: 'Iron',      warn: 'anaemia risk' },
+  vitC:      { req: 90,    unit: 'mg',  label: 'Vitamin C', warn: 'immunity' },
+  folate:    { req: 400,   unit: 'mcg', label: 'Folate',    warn: '' },
+  potassium: { req: 3500,  unit: 'mg',  label: 'Potassium', warn: 'heart health' },
+  magnesium: { req: 400,   unit: 'mg',  label: 'Magnesium', warn: 'muscle cramps' },
+  zinc:      { req: 11,    unit: 'mg',  label: 'Zinc',      warn: 'immunity' },
+};
+
+function renderNutrientTracker() {
+  const card = document.getElementById('nutrientTrackerCard');
+  if (!card) return;
+
+  const meals = S.today.meals;
+  if (!meals.length) {
+    card.innerHTML = `<div style="font-size:10px;color:var(--text3);text-align:center;padding:12px">Log meals to see nutrient breakdown</div>`;
+    return;
+  }
+
+  // Aggregate nutrients from all meals via NutritionDB
+  const totals = { protein:0, carb:0, fat:0, fibre:0, sodium:0, calcium:0, iron:0, vitC:0, folate:0, potassium:0, magnesium:0, zinc:0 };
+
+  if (window.NutritionDB) {
+    for (const meal of meals) {
+      const est = window.NutritionDB.estimateNutrition(meal.name);
+      if (est.items.length) {
+        for (const item of est.items) {
+          totals.protein   += item.prot   || 0;
+          totals.carb      += item.carb   || 0;
+          totals.fat       += item.fat    || 0;
+          totals.fibre     += item.fibre  || 0;
+          totals.sodium    += item.sodium || 0;
+          totals.calcium   += item.calcium|| 0;
+          totals.iron      += item.iron   || 0;
+          totals.vitC      += item.vitC   || 0;
+          totals.folate    += item.folate || 0;
+          totals.potassium += item.potassium || 0;
+          totals.magnesium += item.magnesium || 0;
+          totals.zinc      += item.zinc   || 0;
+        }
+      } else {
+        // Fallback: use stored protein
+        totals.protein += meal.prot || 0;
+      }
+    }
+  }
+
+  const deficiencies = [];
+  let html = '';
+
+  for (const [key, def] of Object.entries(DAILY_REQUIREMENTS)) {
+    const intake = Math.round(totals[key] * 10) / 10;
+    const req    = def.req;
+    const pct    = Math.min((intake / req) * 100, 150);
+    const isOver = def.max && intake > def.max;
+    const isLow  = intake < req * 0.5 && def.warn;
+    const isGood = intake >= req * 0.75 && intake <= (def.max || req * 1.5);
+
+    if (isLow) deficiencies.push({ label: def.label, intake, req, unit: def.unit, warn: def.warn });
+
+    const barColor = isOver ? 'var(--accent3)' : isGood ? 'var(--accent)' : pct > 50 ? 'var(--accent2)' : 'var(--red)';
+    const valClass = isOver ? 'nutrient-excess' : isGood ? 'nutrient-ok' : pct < 30 ? 'nutrient-deficient' : '';
+
+    html += `<div class="nutrient-row">
+      <div class="nutrient-name">${def.label}</div>
+      <div class="nutrient-bar-wrap">
+        <div class="nutrient-bar-fill" style="width:${Math.min(pct,100)}%;background:${barColor}"></div>
+        ${isOver ? `<div style="position:absolute;right:-2px;top:-3px;font-size:8px;color:var(--accent3)">!</div>` : ''}
+      </div>
+      <div class="nutrient-val ${valClass}">${intake}${def.unit}<br/><span style="color:var(--text3)">${req}${def.unit}</span></div>
+    </div>`;
+  }
+
+  // Deficiency alert
+  let defAlert = '';
+  if (deficiencies.length > 0) {
+    defAlert = `<div style="background:rgba(255,68,102,0.08);border:1px solid rgba(255,68,102,0.2);border-radius:8px;padding:10px;margin-bottom:10px">
+      <div style="font-size:9px;color:var(--red);letter-spacing:1px;margin-bottom:5px">⚠ POTENTIAL DEFICIENCIES</div>
+      ${deficiencies.map(d =>
+        `<div style="font-size:10px;color:var(--text2);margin-bottom:3px">
+          <span style="color:var(--red)">↓ ${d.label}</span>: ${d.intake}${d.unit} of ${d.req}${d.unit} needed
+          ${d.warn ? `<span class="deficiency-badge">${d.warn}</span>` : ''}
+        </div>`
+      ).join('')}
+    </div>`;
+  }
+
+  card.innerHTML = defAlert + html;
 }
 
 function renderActivity() {
@@ -1997,184 +2157,214 @@ function renderBody() {
 function renderBodyVisual(m, history) {
   const card = document.getElementById('bodyVisualCard');
   const wrap = document.getElementById('bodyVisualWrap');
-  if (!m || (!m.fat && !m.muscle && !m.visceral)) { card.style.display='none'; return; }
+  if (!m || (!m.fat && !m.muscle && !m.visceral && !m.weight)) { card.style.display='none'; return; }
   card.style.display = 'block';
 
   const prev = history.length >= 2 ? history[history.length - 2] : null;
 
-  // Color helpers
-  function fatColor(pct) {
-    if (!pct) return '#555570';
-    if (pct > 30) return '#ff4466';
-    if (pct > 25) return '#ffcc00';
-    if (pct > 18) return '#ff9900';
-    return '#00ffc8';
+  // ── COLOR SCALES ──
+  const fatCol = f => !f ? '#888' : f>30 ? '#ff3355' : f>25 ? '#ff8800' : f>18 ? '#ffcc00' : '#00dd99';
+  const viscCol = v => !v ? '#888' : v>14 ? '#ff3355' : v>12 ? '#ff8800' : v>9 ? '#ffcc00' : '#00dd99';
+  const muscCol = k => !k ? '#888' : k>45 ? '#c8ff00' : k>35 ? '#44ff99' : k>25 ? '#00ffc8' : '#8888bb';
+  const bmiCol  = b => !b ? '#888' : b>30 ? '#ff3355' : b>27.5 ? '#ff8800' : b>25 ? '#ffcc00' : '#00dd99';
+
+  // ── VISCERAL FAT VISUAL SCALE (belly bulge) ──
+  const visc = m.visceral || 8;
+  const viscOpacity = Math.min(0.9, 0.25 + visc / 18);
+  const abdRadius = 24 + Math.min(visc * 1.8, 28); // belly size grows with visceral fat
+
+  // ── SUBCUTANEOUS / BODY FAT (outer layer thickness) ──
+  const bodyFatPct = m.fat || m.subcutaneous || 20;
+  const fatLayerOpacity = Math.min(0.75, 0.1 + bodyFatPct / 50);
+  const fatLayerWidth   = 2 + Math.min(bodyFatPct / 8, 10); // px extra around silhouette
+
+  // ── DELTA helper ──
+  function dlt(cur, pv, unit, lowerBetter) {
+    if (!prev || pv == null || cur == null) return '';
+    const d = Math.round((cur - pv) * 10) / 10;
+    if (d === 0) return '→ same';
+    const ok = lowerBetter ? d < 0 : d > 0;
+    return (ok ? '▼ ' : '▲ ') + Math.abs(d) + unit;
   }
-  function visceralColor(v) {
-    if (!v) return '#555570';
-    if (v > 14) return '#ff4466';
-    if (v > 12) return '#ffcc00';
-    if (v > 9)  return '#ff9900';
-    return '#00ffc8';
-  }
-  function muscleColor(kg) {
-    if (!kg) return '#555570';
-    if (kg > 40) return '#c8ff00';
-    if (kg > 32) return '#00ffc8';
-    return '#8888aa';
-  }
-  function delta(cur, prevVal, unit, lowerBetter) {
-    if (!prev || prevVal == null || cur == null) return '';
-    const d = Math.round((cur - prevVal) * 10) / 10;
-    if (d === 0) return `<span style="color:var(--text3)">→ same</span>`;
-    const improved = lowerBetter ? d < 0 : d > 0;
-    const col = improved ? 'var(--accent)' : 'var(--red)';
-    const arrow = d > 0 ? '↑' : '↓';
-    return `<span style="color:${col}">${arrow}${Math.abs(d)}${unit}</span>`;
+  function dltCol(cur, pv, lowerBetter) {
+    if (!prev || pv == null || cur == null) return '#888';
+    const d = cur - pv;
+    if (Math.abs(d) < 0.05) return '#888';
+    return (lowerBetter ? d < 0 : d > 0) ? '#c8ff00' : '#ff4466';
   }
 
-  // Subcutaneous fat opacity — more fat = more visible yellow layer
-  const subFatPct = m.subcutaneous || m.fat || 20;
-  const subOpacity = Math.min(0.9, 0.2 + (subFatPct / 40));
-  // Abdominal (visceral) fill
-  const viscFill = visceralColor(m.visceral);
-  const viscOpacity = m.visceral ? Math.min(0.85, 0.3 + m.visceral / 20) : 0.3;
+  // SVG dimensions
+  const W = 340, H = 520;
 
-  // Build label data
+  // ── REALISTIC HUMAN SILHOUETTE (front view anatomical) ──
+  // Built from anatomically-proportioned bezier curves
+  const bodySVG = `
+  <!-- ══ OUTER FAT LAYER (subcutaneous) ══ -->
+  <path d="
+    M 170 62
+    C 195 62 215 72 220 88
+    C 224 95 226 100 226 106
+    C 228 112 228 118 226 122
+    C 224 127 222 130 222 134
+    C 225 138 230 145 232 155
+    C 238 170 240 182 238 200
+    C 242 218 244 240 242 260
+    C 244 278 245 295 244 310
+    C 246 325 248 340 246 358
+    C 244 375 240 390 236 400
+    C 232 415 228 425 222 430
+    C 218 435 214 438 210 438
+    C 208 440 204 440 200 438
+    C 197 436 196 432 197 428
+    C 199 420 202 408 202 395
+    C 202 382 200 368 198 355
+    C 196 342 195 332 194 320
+    C 192 308 190 298 190 288
+    C 188 298 186 308 184 320
+    C 183 332 182 342 180 355
+    C 178 368 176 382 176 395
+    C 176 408 179 420 181 428
+    C 182 432 181 436 178 438
+    C 174 440 170 440 168 438
+    C 164 438 160 435 156 430
+    C 150 425 146 415 142 400
+    C 138 390 134 375 132 358
+    C 130 340 132 325 134 310
+    C 133 295 132 278 134 260
+    C 132 240 134 218 138 200
+    C 136 182 138 170 144 155
+    C 146 145 151 138 154 134
+    C 154 130 152 127 150 122
+    C 148 118 148 112 150 106
+    C 150 100 152 95 156 88
+    C 161 72 145 62 170 62 Z
+  " fill="#ffcc4422" stroke="#ffcc4430" stroke-width="${fatLayerWidth}" opacity="${fatLayerOpacity}"/>
+
+  <!-- ══ BODY SILHOUETTE (main) ══ -->
+  <!-- Head -->
+  <ellipse cx="170" cy="72" rx="28" ry="33" fill="#1e2030" stroke="#ffffff15" stroke-width="1.5"/>
+  <!-- Neck -->
+  <rect x="161" y="101" width="18" height="22" rx="5" fill="#1e2030" stroke="#ffffff10" stroke-width="1"/>
+  <!-- Shoulders + upper body -->
+  <path d="M 161 122 C 148 124 136 130 128 140 C 120 150 118 162 118 174 C 116 188 116 200 116 212 L 222 212 C 222 200 222 188 220 174 C 220 162 218 150 210 140 C 202 130 190 124 177 122 Z" fill="#1e2030" stroke="#ffffff12" stroke-width="1.5"/>
+  <!-- Arms left -->
+  <path d="M 118 150 C 108 155 100 164 96 178 C 92 192 90 210 91 228 C 92 244 94 258 98 268 C 102 278 108 282 114 280 C 120 278 124 270 125 258 C 127 244 126 228 126 212 L 118 212 Z" fill="#1e2030" stroke="#ffffff10" stroke-width="1.2"/>
+  <!-- Arms right -->
+  <path d="M 220 150 C 230 155 238 164 242 178 C 246 192 248 210 247 228 C 246 244 244 258 240 268 C 236 278 230 282 224 280 C 218 278 214 270 213 258 C 211 244 212 228 212 212 L 220 212 Z" fill="#1e2030" stroke="#ffffff10" stroke-width="1.2"/>
+  <!-- Torso lower -->
+  <path d="M 116 212 C 114 230 113 248 114 266 C 115 282 118 295 122 308 C 128 322 136 330 148 334 C 156 336 162 337 170 337 C 178 337 184 336 192 334 C 204 330 212 322 218 308 C 222 295 225 282 226 266 C 227 248 226 230 224 212 Z" fill="#1e2030" stroke="#ffffff12" stroke-width="1.5"/>
+  <!-- Hips -->
+  <path d="M 122 308 C 118 320 116 334 116 348 C 116 358 118 366 122 372 L 218 372 C 222 366 224 358 224 348 C 224 334 222 320 218 308 Z" fill="#1a1c2a" stroke="#ffffff10" stroke-width="1"/>
+  <!-- Left leg -->
+  <path d="M 122 372 C 120 390 118 412 118 432 C 118 452 120 472 122 488 C 124 496 128 500 134 500 C 140 500 144 496 146 488 C 148 476 149 462 149 448 C 149 434 148 420 148 408 C 148 394 149 382 150 372 Z" fill="#1e2030" stroke="#ffffff10" stroke-width="1.2"/>
+  <!-- Right leg -->
+  <path d="M 218 372 C 220 390 222 412 222 432 C 222 452 220 472 218 488 C 216 496 212 500 206 500 C 200 500 196 496 194 488 C 192 476 191 462 191 448 C 191 434 192 420 192 408 C 192 394 191 382 190 372 Z" fill="#1e2030" stroke="#ffffff10" stroke-width="1.2"/>
+
+  <!-- ══ ANATOMICAL DETAIL LINES ══ -->
+  <!-- Collarbone hint -->
+  <path d="M 140 130 Q 170 126 198 130" fill="none" stroke="#ffffff18" stroke-width="1" stroke-dasharray="2,3"/>
+  <!-- Rib lines (subtle) -->
+  <path d="M 140 170 Q 170 165 198 170" fill="none" stroke="#ffffff10" stroke-width="0.8"/>
+  <path d="M 138 186 Q 170 181 200 186" fill="none" stroke="#ffffff10" stroke-width="0.8"/>
+  <path d="M 137 202 Q 170 197 201 202" fill="none" stroke="#ffffff10" stroke-width="0.8"/>
+  <!-- Abs lines (shown when muscle mass is good) -->
+  ${m.muscle && m.muscle > 35 ? `
+  <line x1="165" y1="218" x2="165" y2="300" stroke="#c8ff0022" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <line x1="175" y1="218" x2="175" y2="300" stroke="#c8ff0022" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <path d="M 148 235 Q 170 228 190 235" fill="none" stroke="#c8ff0018" stroke-width="1"/>
+  <path d="M 146 255 Q 170 248 192 255" fill="none" stroke="#c8ff0018" stroke-width="1"/>
+  <path d="M 146 275 Q 170 268 192 275" fill="none" stroke="#c8ff0018" stroke-width="1"/>
+  ` : ''}
+
+  <!-- ══ VISCERAL FAT ZONE (abdominal) ══ -->
+  <ellipse cx="170" cy="248" rx="${abdRadius}" ry="${abdRadius * 0.85}"
+    fill="#ff440033" stroke="#ff440066" stroke-width="1.5" opacity="${viscOpacity}"/>
+  <!-- Inner organs hint -->
+  <ellipse cx="162" cy="244" rx="${abdRadius * 0.4}" ry="${abdRadius * 0.35}"
+    fill="#ff220022" stroke="none"/>
+  <ellipse cx="180" cy="252" rx="${abdRadius * 0.35}" ry="${abdRadius * 0.3}"
+    fill="#ff220015" stroke="none"/>
+  `;
+
+  // ── LABEL DEFINITIONS ──
   const labels = [];
+  if (m.weight)       labels.push({ side:'top',    cy:58,  text: m.weight+'kg',    sub:'Weight',         col:'#e8e8ff', delta:dlt(m.weight,prev?.weight,'kg',true), dCol:dltCol(m.weight,prev?.weight,true) });
+  if (m.fat)          labels.push({ side:'left',   cx:52,  cy:192, text:m.fat+'%',  sub:'Body Fat',      col:fatCol(m.fat), delta:dlt(m.fat,prev?.fat,'%',true), dCol:dltCol(m.fat,prev?.fat,true) });
+  if (m.subcutaneous) labels.push({ side:'left',   cx:45,  cy:240, text:m.subcutaneous+'%', sub:'Subcut. Fat', col:fatCol(m.subcutaneous), delta:dlt(m.subcutaneous,prev?.subcutaneous,'%',true), dCol:dltCol(m.subcutaneous,prev?.subcutaneous,true) });
+  if (m.visceral)     labels.push({ side:'right',  cx:288, cy:248, text:''+m.visceral,  sub:'Visceral Fat', col:viscCol(m.visceral), delta:dlt(m.visceral,prev?.visceral,'',true), dCol:dltCol(m.visceral,prev?.visceral,true) });
+  if (m.muscle)       labels.push({ side:'right',  cx:292, cy:172, text:m.muscle+'kg',  sub:'Muscle',       col:muscCol(m.muscle), delta:dlt(m.muscle,prev?.muscle,'kg',false), dCol:dltCol(m.muscle,prev?.muscle,false) });
+  if (m.lean)         labels.push({ side:'right',  cx:294, cy:310, text:m.lean+'kg',    sub:'Lean Mass',    col:'#44ffcc', delta:dlt(m.lean,prev?.lean,'kg',false), dCol:dltCol(m.lean,prev?.lean,false) });
+  if (m.water)        labels.push({ side:'left',   cx:48,  cy:310, text:m.water+'%',    sub:'Body Water',   col:'#44aaff', delta:dlt(m.water,prev?.water,'%',false), dCol:dltCol(m.water,prev?.water,false) });
+  if (m.bmi)          labels.push({ side:'bottom', cy:508, text:'BMI '+m.bmi,           sub: m.bmi>30?'⚠ Obese':m.bmi>27.5?'⚠ Overweight':m.bmi>25?'Borderline':'✓ Normal', col:bmiCol(m.bmi), delta:'', dCol:'#888' });
+  if (m.bone)         labels.push({ side:'left',   cx:50,  cy:390, text:m.bone+'kg',    sub:'Bone Mass',    col:'#aaaadd', delta:'', dCol:'#888' });
+  if (m.proteinPct)   labels.push({ side:'right',  cx:292, cy:370, text:m.proteinPct+'%',sub:'Protein%',   col:'#ffaa44', delta:'', dCol:'#888' });
 
-  if (m.fat != null) labels.push({
-    id: 'fat', x: 78, y: 175, side: 'left',
-    metric: m.fat + '%', name: 'Body Fat',
-    color: fatColor(m.fat),
-    delta: delta(m.fat, prev?.fat, '%', true)
-  });
-  if (m.visceral != null) labels.push({
-    id: 'visceral', x: 162, y: 210, side: 'right',
-    metric: m.visceral + '', name: 'Visceral Fat',
-    color: visceralColor(m.visceral),
-    delta: delta(m.visceral, prev?.visceral, '', true)
-  });
-  if (m.subcutaneous != null) labels.push({
-    id: 'subcut', x: 78, y: 240, side: 'left',
-    metric: m.subcutaneous + '%', name: 'Subcut. Fat',
-    color: fatColor(m.subcutaneous),
-    delta: delta(m.subcutaneous, prev?.subcutaneous, '%', true)
-  });
-  if (m.muscle != null) labels.push({
-    id: 'muscle', x: 162, y: 150, side: 'right',
-    metric: m.muscle + 'kg', name: 'Muscle',
-    color: muscleColor(m.muscle),
-    delta: delta(m.muscle, prev?.muscle, 'kg', false)
-  });
-  if (m.lean != null) labels.push({
-    id: 'lean', x: 162, y: 280, side: 'right',
-    metric: m.lean + 'kg', name: 'Lean Mass',
-    color: 'var(--accent)',
-    delta: delta(m.lean, prev?.lean, 'kg', false)
-  });
-  if (m.weight != null) labels.push({
-    id: 'weight', x: 120, y: 80, side: 'center',
-    metric: m.weight + 'kg', name: 'Weight',
-    color: 'var(--text)',
-    delta: delta(m.weight, prev?.weight, 'kg', true)
-  });
-  if (m.bmi != null) labels.push({
-    id: 'bmi', x: 120, y: 370, side: 'center',
-    metric: 'BMI ' + m.bmi, name: m.bmi > 27.5 ? '⚠ Overweight' : m.bmi > 25 ? 'Borderline' : '✓ Normal',
-    color: m.bmi > 27.5 ? 'var(--red)' : m.bmi > 25 ? 'var(--yellow)' : 'var(--accent2)',
-    delta: ''
-  });
+  // ── CONNECTOR LINES + LABEL BOXES ──
+  // Body anchor points for each label
+  const anchors = {
+    fat: [130, 188], subcutaneous: [127, 238], visceral: [196, 248],
+    muscle: [205, 168], lean: [205, 305], water: [132, 305],
+    bone: [132, 385], proteinPct: [196, 365]
+  };
+  const labelKeys = ['fat','subcutaneous','visceral','muscle','lean','water','bone','proteinPct'];
 
-  // SVG human silhouette (front view — stylized anatomical)
-  const svgH = 420;
-  const svgW = 240;
-
-  const svg = `<svg viewBox="0 0 ${svgW} ${svgH}" class="body-visual-svg" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <radialGradient id="visceralGrad" cx="50%" cy="50%">
-        <stop offset="0%" stop-color="${viscFill}" stop-opacity="${viscOpacity}"/>
-        <stop offset="100%" stop-color="${viscFill}" stop-opacity="0.1"/>
-      </radialGradient>
-      <radialGradient id="subFatGrad" cx="50%" cy="40%">
-        <stop offset="0%" stop-color="#ffcc44" stop-opacity="${subOpacity * 0.6}"/>
-        <stop offset="100%" stop-color="#ffcc44" stop-opacity="${subOpacity * 0.15}"/>
-      </radialGradient>
-    </defs>
-
-    <!-- ── BODY SILHOUETTE ── -->
-    <!-- Legs -->
-    <path d="M 88 310 Q 80 340 78 380 Q 77 400 82 410 Q 90 415 98 412 Q 104 408 104 395 Q 106 355 108 330" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
-    <path d="M 152 310 Q 160 340 162 380 Q 163 400 158 410 Q 150 415 142 412 Q 136 408 136 395 Q 134 355 132 330" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
-    <!-- Torso -->
-    <path d="M 82 170 Q 75 200 76 240 Q 76 280 80 310 Q 90 320 120 322 Q 150 320 160 310 Q 164 280 164 240 Q 165 200 158 170 Q 148 160 120 158 Q 92 160 82 170 Z" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
-    <!-- Arms -->
-    <path d="M 82 170 Q 68 178 62 200 Q 58 220 60 248 Q 62 260 70 262 Q 78 264 82 252 Q 85 235 86 215 Q 87 195 85 178 Z" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
-    <path d="M 158 170 Q 172 178 178 200 Q 182 220 180 248 Q 178 260 170 262 Q 162 264 158 252 Q 155 235 154 215 Q 153 195 155 178 Z" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
-    <!-- Head + neck -->
-    <ellipse cx="120" cy="108" rx="26" ry="30" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
-    <rect x="113" y="135" width="14" height="20" rx="4" fill="#2a2a3a"/>
-
-    <!-- ── SUBCUTANEOUS FAT LAYER (yellow, wraps body) ── -->
-    <path d="M 79 172 Q 70 202 71 244 Q 71 282 77 312 Q 88 324 120 326 Q 152 324 163 312 Q 169 282 169 244 Q 169 202 161 172 Q 148 158 120 155 Q 92 158 79 172 Z"
-      fill="url(#subFatGrad)" stroke="#ffcc4430" stroke-width="1"/>
-
-    <!-- ── VISCERAL FAT (abdominal region) ── -->
-    <ellipse cx="120" cy="228" rx="30" ry="35" fill="url(#visceralGrad)"/>
-
-    <!-- ── MUSCLE LINES (show definition) ── -->
-    ${m.muscle && m.muscle > 35 ? `
-    <line x1="112" y1="175" x2="112" y2="260" stroke="#c8ff0030" stroke-width="2" stroke-dasharray="4,4"/>
-    <line x1="128" y1="175" x2="128" y2="260" stroke="#c8ff0030" stroke-width="2" stroke-dasharray="4,4"/>
-    <path d="M 95 195 Q 120 185 145 195" fill="none" stroke="#00ffc820" stroke-width="2"/>
-    <path d="M 95 215 Q 120 205 145 215" fill="none" stroke="#00ffc820" stroke-width="2"/>
-    ` : ''}
-
-    <!-- ── CONNECTOR LINES TO LABELS ── -->
-    ${labels.map(l => {
-      // anchor points on body based on region
-      const anchors = {
-        fat:      [94, 220],  visceral: [120, 228],
-        subcut:   [94, 250],  muscle:   [146, 200],
-        lean:     [140, 270], weight:   [120, 155],
-        bmi:      [120, 315]
-      };
-      const [ax, ay] = anchors[l.id] || [120, 240];
-      const lx = l.side === 'left' ? 40 : l.side === 'right' ? 195 : 120;
-      const ly = l.y;
-      return `<line x1="${ax}" y1="${ay}" x2="${lx + 40}" y2="${ly}"
-        stroke="${l.color}" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>
-      <circle cx="${ax}" cy="${ay}" r="3" fill="${l.color}" opacity="0.8"/>`;
-    }).join('')}
-
-    <!-- ── LABEL BOXES ── -->
-    ${labels.map(l => {
-      const lx = l.side === 'left' ? 2 : l.side === 'right' ? 152 : 74;
-      const boxW = 82;
-      const hasD = l.delta ? true : false;
-      const boxH = hasD ? 38 : 30;
-      return `<g>
-        <rect x="${lx}" y="${l.y - 14}" width="${boxW}" height="${boxH}" rx="6"
-          fill="#111118" stroke="${l.color}44" stroke-width="1" opacity="0.92"/>
-        <text x="${lx + boxW/2}" y="${l.y + 2}" text-anchor="middle"
-          font-family="Syne,sans-serif" font-weight="700" font-size="11" fill="${l.color}">${l.metric}</text>
-        <text x="${lx + boxW/2}" y="${l.y + 13}" text-anchor="middle"
-          font-family="JetBrains Mono,monospace" font-size="7.5" fill="#8888aa">${l.name}</text>
-        ${l.delta ? `<text x="${lx + boxW/2}" y="${l.y + 24}" text-anchor="middle"
-          font-size="8" fill="#aaaacc">${l.delta.replace(/<[^>]+>/g,'')}</text>` : ''}
+  let connectors = '';
+  labels.forEach((lb, i) => {
+    const key = lb.sub.toLowerCase().replace(/[^a-z]/g,'').replace('bodyfat','fat').replace('subcutfat','subcutaneous').replace('visceralfat','visceral').replace('leanmass','lean').replace('bodywater','water').replace('bonemass','bone').replace('protein','proteinPct');
+    const anchor = anchors[key] || [170, 250];
+    const lx = lb.side==='left' ? lb.cx : lb.side==='right' ? lb.cx - 88 : 126;
+    const ly = lb.cy - 20;
+    const ax = anchor[0], ay = anchor[1];
+    const labelCx = lx + 44;
+    connectors += `
+      <line x1="${ax}" y1="${ay}" x2="${labelCx}" y2="${ly+14}"
+        stroke="${lb.col}" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+      <circle cx="${ax}" cy="${ay}" r="3.5" fill="${lb.col}" opacity="0.85"/>
+      <g>
+        <rect x="${lx}" y="${ly}" width="88" height="${lb.delta ? 46 : 36}" rx="8"
+          fill="#0d0d18ee" stroke="${lb.col}55" stroke-width="1.2"/>
+        <text x="${labelCx}" y="${ly+14}" text-anchor="middle"
+          font-family="Syne,sans-serif" font-weight="700" font-size="13" fill="${lb.col}">${lb.text}</text>
+        <text x="${labelCx}" y="${ly+25}" text-anchor="middle"
+          font-family="JetBrains Mono,monospace" font-size="8" fill="#8888aa">${lb.sub}</text>
+        ${lb.delta ? `<text x="${labelCx}" y="${ly+37}" text-anchor="middle"
+          font-family="JetBrains Mono,monospace" font-size="8.5" fill="${lb.dCol}">${lb.delta}</text>` : ''}
       </g>`;
-    }).join('')}
+  });
 
+  // Weight at top center
+  const wtLabel = labels.find(l => l.sub === 'Weight');
+  let weightBox = '';
+  if (wtLabel) {
+    weightBox = `
+      <rect x="126" y="28" width="88" height="36" rx="8" fill="#0d0d18ee" stroke="${wtLabel.col}55" stroke-width="1.2"/>
+      <text x="170" y="43" text-anchor="middle" font-family="Syne,sans-serif" font-weight="800" font-size="16" fill="${wtLabel.col}">${wtLabel.text}</text>
+      <text x="170" y="56" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#8888aa">WEIGHT ${wtLabel.delta ? '· '+wtLabel.delta : ''}</text>
+      <line x1="170" y1="64" x2="170" y2="72" stroke="${wtLabel.col}66" stroke-width="1" stroke-dasharray="3,2"/>`;
+  }
+
+  // BMI at bottom center
+  const bmiLabel = labels.find(l => l.sub.includes('Normal') || l.sub.includes('weight') || l.sub.includes('Obese'));
+  let bmiBox = '';
+  if (bmiLabel) {
+    bmiBox = `
+      <line x1="170" y1="500" x2="170" y2="508" stroke="${bmiLabel.col}66" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="126" y="508" width="88" height="40" rx="8" fill="#0d0d18ee" stroke="${bmiLabel.col}55" stroke-width="1.2"/>
+      <text x="170" y="523" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="13" fill="${bmiLabel.col}">${bmiLabel.text}</text>
+      <text x="170" y="536" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="${bmiLabel.col}">${bmiLabel.sub}</text>`;
+  }
+
+  const finalSVG = `<svg viewBox="0 0 ${W} ${H}" class="body-visual-svg"
+    xmlns="http://www.w3.org/2000/svg" style="background:transparent">
+    ${bodySVG}
+    ${connectors}
+    ${weightBox}
+    ${bmiBox}
   </svg>`;
 
-  wrap.innerHTML = svg;
-  card.style.display = 'block';
+  wrap.innerHTML = finalSVG;
 }
 
-// ═══════════════════════════════════════════
-//  BODY TIMELINE CHART (Canvas-based)
-// ═══════════════════════════════════════════
-let activeTimelineMetric = 'fat';
 
 function renderBodyTimeline(metrics, metric) {
   const card = document.getElementById('bodyTimelineCard');
