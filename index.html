@@ -1204,7 +1204,7 @@
           <div style="font-size:10px;color:var(--text2);margin-bottom:10px">Take a photo of your meal — AI identifies food items and estimates calories & protein</div>
           <label class="btn btn-secondary" style="width:100%;text-align:center;cursor:pointer;display:block">
             📷 Take / Upload Food Photo
-            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="estimateFoodFromPhoto(this)" />
+            <input type="file" accept="image/*" style="display:none" onchange="estimateFoodFromPhoto(this)" />
           </label>
           <div id="photoEstimateResult" style="display:none;margin-top:10px"></div>
         </div>
@@ -1215,7 +1215,7 @@
           <div style="font-size:10px;color:var(--text2);margin-bottom:10px">Take a photo of any packaged food label — app reads calories & protein automatically</div>
           <label class="btn btn-secondary" style="width:100%;text-align:center;cursor:pointer;display:block">
             📸 Upload Food Label Photo
-            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="scanFoodLabel(this)" />
+            <input type="file" accept="image/*" style="display:none" onchange="scanFoodLabel(this)" />
           </label>
           <div id="labelResult" style="display:none;margin-top:10px"></div>
         </div>
@@ -1741,6 +1741,26 @@ const QUICK_FOODS = [
   { name: 'Milk 200ml', cal: 100, prot: 7 },
 ];
 
+// Round to max 2 decimal places, removing trailing zeros
+const r2 = v => Math.round((v || 0) * 100) / 100;
+const r1 = v => Math.round((v || 0) * 10)  / 10;
+
+// Clean up any existing bad floating point values in stored state
+function cleanupFloats(state) {
+  if (state.today) {
+    state.today.calories = Math.round(state.today.calories || 0);
+    state.today.protein  = r1(state.today.protein || 0);
+    if (state.today.meals) {
+      state.today.meals = state.today.meals.map(m => ({
+        ...m,
+        cal:  Math.round(m.cal || 0),
+        prot: r1(m.prot || 0)
+      }));
+    }
+  }
+  return state;
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
@@ -1780,7 +1800,7 @@ function save(state) {
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
 }
 
-let S = loadState();
+let S = cleanupFloats(loadState());
 
 // If date changed, archive yesterday and start fresh
 (function checkNewDate() {
@@ -1796,12 +1816,9 @@ let S = loadState();
 })();
 
 // Auto new-day at midnight based on device clock
-function scheduleMidnightReset() {
-  const now = new Date();
-  const midnight = new Date(now);
-  midnight.setHours(24, 0, 0, 500); // 00:00:00.500 next day
-  const msUntilMidnight = midnight - now;
-  setTimeout(() => {
+// Called after full init so showToast is available
+function startMidnightScheduler() {
+  function resetDay() {
     if (S.today.date !== todayStr()) {
       if (S.today.score !== null) {
         S.dailyScores.push({ date: S.today.date, score: S.today.score });
@@ -1811,12 +1828,24 @@ function scheduleMidnightReset() {
       S.today = fresh;
       save(S);
       renderAll();
-      showToast('🌅 New day started automatically!');
+      showToast('🌅 New day — fresh start!');
     }
-    scheduleMidnightReset(); // reschedule for next midnight
-  }, msUntilMidnight);
+  }
+
+  function scheduleNext() {
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 500);
+    setTimeout(() => { resetDay(); scheduleNext(); }, midnight - now);
+  }
+
+  scheduleNext();
+
+  // Also reset when app comes back from background (phone wake, tab switch)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) resetDay();
+  });
 }
-scheduleMidnightReset();
 
 // ═══════════════════════════════════════════
 //  NAV
@@ -1864,8 +1893,8 @@ function renderDashboard() {
   const { calories, protein, steps, workoutDone, workoutType, workoutDuration, score, breakdown } = S.today;
 
   // Macros
-  document.getElementById('calDisplay').textContent = calories;
-  document.getElementById('proteinDisplay').textContent = protein;
+  document.getElementById('calDisplay').textContent = Math.round(calories);
+  document.getElementById('proteinDisplay').textContent = r1(protein);
   document.getElementById('calBar').style.width = Math.min(100, (calories / S.settings.calorieTarget) * 100) + '%';
   document.getElementById('protBar').style.width = Math.min(100, (protein / S.settings.proteinTarget) * 100) + '%';
 
@@ -2104,14 +2133,14 @@ function renderFoodLog() {
     mealsList.innerHTML = meals.map((m, i) => `
       <div class="meal-item fade-in">
         <div class="meal-name">${m.name}</div>
-        <div class="meal-macros">${m.cal} kcal<br/>${m.prot}g prot</div>
+        <div class="meal-macros">${Math.round(m.cal)} kcal<br/>${r1(m.prot)}g prot</div>
         <button class="meal-delete" onclick="deleteMeal(${i})">✕</button>
       </div>
     `).join('');
   }
 
-  document.getElementById('totalCalFull').textContent = S.today.calories + ' kcal';
-  document.getElementById('totalProtFull').textContent = S.today.protein + 'g';
+  document.getElementById('totalCalFull').textContent = Math.round(S.today.calories) + ' kcal';
+  document.getElementById('totalProtFull').textContent = r1(S.today.protein) + 'g';
 
   // Meal insight
   const p = S.today.protein;
@@ -3014,7 +3043,12 @@ function saveAndConnectGfit() {
 }
 
 function launchGfitOAuth(clientId) {
-  const redirectUri = window.location.origin + window.location.pathname;
+  // Build redirect URI — must exactly match what's registered in Google Console
+  // Use the full URL including index.html to be explicit
+  const path = window.location.pathname.endsWith('/') 
+    ? window.location.pathname + 'index.html'
+    : window.location.pathname;
+  const redirectUri = window.location.origin + path;
   const state = Math.random().toString(36).slice(2);
   sessionStorage.setItem('gfit_state', state);
 
@@ -3257,8 +3291,8 @@ function logFood() {
   if (!name || !cal) { showToast('Enter food name and calories'); return; }
 
   S.today.meals.push({ name, cal, prot });
-  S.today.calories += cal;
-  S.today.protein += prot;
+  S.today.calories = Math.round(S.today.calories + cal);
+  S.today.protein = r1(S.today.protein + prot);
 
   document.getElementById('foodName').value = '';
   document.getElementById('foodCals').value = '';
@@ -3272,8 +3306,8 @@ function logFood() {
 function quickAdd(idx) {
   const f = QUICK_FOODS[idx];
   S.today.meals.push({ name: f.name, cal: f.cal, prot: f.prot });
-  S.today.calories += f.cal;
-  S.today.protein += f.prot;
+  S.today.calories = Math.round(S.today.calories + f.cal);
+  S.today.protein = r1(S.today.protein + f.prot);
   save(S);
   renderAll();
   showToast(`${f.name} added`);
@@ -3281,8 +3315,8 @@ function quickAdd(idx) {
 
 function deleteMeal(idx) {
   const meal = S.today.meals[idx];
-  S.today.calories -= meal.cal;
-  S.today.protein -= meal.prot;
+  S.today.calories = Math.round(S.today.calories - meal.cal);
+  S.today.protein = r1(S.today.protein - meal.prot);
   if (S.today.calories < 0) S.today.calories = 0;
   if (S.today.protein < 0) S.today.protein = 0;
   S.today.meals.splice(idx, 1);
@@ -3646,8 +3680,8 @@ function confirmAiLog() {
   if (!pendingAiMeal) return;
   const meal = { ...pendingAiMeal };
   S.today.meals.push({ name: meal.name, cal: meal.cal, prot: meal.prot });
-  S.today.calories += meal.cal;
-  S.today.protein += meal.prot;
+  S.today.calories = Math.round(S.today.calories + meal.cal);
+  S.today.protein = r1(S.today.protein + meal.prot);
   save(S); renderAll();
   document.getElementById('aiFood').value = '';
   document.getElementById('aiResult').style.display = 'none';
@@ -4152,8 +4186,8 @@ async function scanFoodLabel(input) {
 function logLabelFood(d) {
   if (!d.calories) { showToast('No calorie data found'); return; }
   S.today.meals.push({ name: 'Packaged food (label scan)', cal: d.calories, prot: d.protein || 0 });
-  S.today.calories += d.calories;
-  S.today.protein += (d.protein || 0);
+  S.today.calories = Math.round(S.today.calories + (d.calories || 0));
+  S.today.protein = r1(S.today.protein + (d.protein || 0));
   save(S); renderAll();
   showToast(`Logged ${d.calories} kcal from label ✓`);
 }
@@ -4301,7 +4335,7 @@ function showPhotoFallback(hint) {
 
 function logPhotoMeal(meal) {
   S.today.meals.push({ name: meal.name + ' (photo)', cal: meal.cal, prot: meal.prot });
-  S.today.calories += meal.cal;
+  S.today.calories = Math.round(S.today.calories + meal.cal);
   S.today.protein  += meal.prot;
   save(S); renderAll();
   document.getElementById('photoEstimateResult').style.display = 'none';
@@ -4333,7 +4367,8 @@ loadScript('ocr-engine.js');
 
 renderAll();
 applyStoredTheme();
-checkOAuthRedirect(); // must run AFTER showToast is defined
+checkOAuthRedirect();   // must run AFTER showToast is defined
+startMidnightScheduler(); // must run AFTER showToast is defined
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
