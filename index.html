@@ -2793,15 +2793,12 @@ function renderThemeButtons() {
 //  App reads Fitness data only — no write access
 // ═══════════════════════════════════════════
 
-// ── IMPORTANT: Replace this with your own Client ID ──
-// Get it free at console.cloud.google.com:
-//   1. Create project → Enable "Fitness API"
-//   2. APIs & Services → Credentials → Create OAuth 2.0 Client ID
-//   3. Application type: Web application
-//   4. Add your GitHub Pages URL to "Authorized JavaScript origins"
-//      e.g. https://ashwani-panwar.github.io
-//   5. Paste the client_id below
-const GFIT_CLIENT_ID = (S.settings && S.settings.gfitClientId) || 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+// Client ID is domain-locked to ashwani-panwar.github.io — safe to embed in browser code
+const GFIT_HARDCODED_ID = '305549422086-50rjn2f35oqpo9ak72pb6c6mhih1cu0v.apps.googleusercontent.com';
+
+const GFIT_CLIENT_ID = GFIT_HARDCODED_ID ||
+                       (S.settings && S.settings.gfitClientId) ||
+                       '';
 
 const GFIT_SCOPES = [
   'https://www.googleapis.com/auth/fitness.activity.read',
@@ -2875,25 +2872,26 @@ function renderGfitStatus() {
 }
 
 function connectGoogleFit() {
-  const token  = S.settings && S.settings.gfitToken;
-  const expiry = S.settings && S.settings.gfitTokenExpiry;
+  const token   = S.settings && S.settings.gfitToken;
+  const expiry  = S.settings && S.settings.gfitTokenExpiry;
   const expired = expiry && Date.now() > expiry;
 
-  // Already connected — sync directly
+  // Already connected and valid — sync directly
   if (token && !expired) {
     syncGoogleFit(token);
     return;
   }
 
-  const clientId = S.settings && S.settings.gfitClientId;
+  // Resolve Client ID: hardcoded > saved in settings
+  const clientId = GFIT_HARDCODED_ID || (S.settings && S.settings.gfitClientId);
 
   if (!clientId) {
-    // Show the full-screen Google sign-in modal
+    // No Client ID anywhere — show setup modal
     showGfitSignInModal();
     return;
   }
 
-  // Has Client ID — launch OAuth popup directly
+  // Has Client ID — launch OAuth popup directly (no modal)
   launchGfitOAuth(clientId);
 }
 
@@ -3020,25 +3018,35 @@ function launchGfitOAuth(clientId) {
   const state = Math.random().toString(36).slice(2);
   sessionStorage.setItem('gfit_state', state);
 
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    response_type: 'token',
-    scope: GFIT_SCOPES,
-    state: state,
-    include_granted_scopes: 'true',
-    prompt: 'select_account',   // lets user choose which Google account
+  const authParams = new URLSearchParams({
+    client_id:             clientId,
+    redirect_uri:          redirectUri,
+    response_type:         'token',
+    scope:                 GFIT_SCOPES,
+    state:                 state,
+    include_granted_scopes:'true',
+    prompt:                'select_account',
   });
 
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${authParams}`;
 
-  // Open Google sign-in in a popup
+  // Detect mobile — use full redirect (Chrome mobile blocks popups)
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    // Full-page redirect — checkOAuthRedirect() handles the return
+    showToast('Redirecting to Google sign in...');
+    setTimeout(() => { window.location.href = authUrl; }, 300);
+    return;
+  }
+
+  // Desktop — try popup
   const popup = window.open(authUrl, 'gfit_auth', 'width=480,height=620,scrollbars=yes,resizable=yes');
 
   if (!popup) {
-    // Popup blocked — redirect instead
-    sessionStorage.setItem('gfit_redirect', 'true');
-    window.location.href = authUrl;
+    // Popup blocked on desktop too — redirect
+    showToast('Redirecting to Google sign in...');
+    setTimeout(() => { window.location.href = authUrl; }, 300);
     return;
   }
 
@@ -3048,40 +3056,33 @@ function launchGfitOAuth(clientId) {
   let checks = 0;
   const poll = setInterval(() => {
     checks++;
-    if (checks > 300) { clearInterval(poll); return; } // 2.5 min timeout
-
+    if (checks > 300) { clearInterval(poll); return; }
     try {
       if (popup.closed) { clearInterval(poll); return; }
-
       const hash = popup.location.hash || popup.location.search;
       if (!hash) return;
-
-      const params = new URLSearchParams(hash.replace(/^[#?]/, ''));
-      const token  = params.get('access_token');
-      const retState = params.get('state');
-
+      const p = new URLSearchParams(hash.replace(/^[#?]/, ''));
+      const token    = p.get('access_token');
+      const retState = p.get('state');
       if (token && retState === sessionStorage.getItem('gfit_state')) {
         clearInterval(poll);
         popup.close();
-
-        // Save token (expires in 1 hour typically)
-        const expiresIn = parseInt(params.get('expires_in') || '3600');
+        const expiresIn = parseInt(p.get('expires_in') || '3600');
+        if (!S.settings) S.settings = defaultState().settings;
         S.settings.gfitToken       = token;
         S.settings.gfitTokenExpiry = Date.now() + (expiresIn * 1000);
         save(S);
-
+        renderAll();
         renderGfitStatus();
-        showToast('Google account connected ✓ Syncing...');
+        showToast('Google Fit connected ✓ Syncing...');
         syncGoogleFit(token);
       }
-    } catch(e) {
-      // Cross-origin — popup is on google.com, ignore until redirected back
-    }
+    } catch(e) { /* cross-origin — ignore */ }
   }, 500);
 }
 
 // Handle redirect back from OAuth (if popup was blocked)
-(function checkOAuthRedirect() {
+function checkOAuthRedirect() {
   const hash = window.location.hash;
   if (!hash.includes('access_token')) return;
   const params = new URLSearchParams(hash.substring(1));
@@ -3094,10 +3095,11 @@ function launchGfitOAuth(clientId) {
     S.settings.gfitToken       = token;
     S.settings.gfitTokenExpiry = Date.now() + (expiresIn * 1000);
     save(S);
-    showToast('Google connected ✓ Syncing...');
-    setTimeout(() => syncGoogleFit(token), 500);
+    renderAll();
+    showToast('Google Fit connected ✓ Syncing...');
+    setTimeout(() => syncGoogleFit(token), 800);
   }
-})();
+}
 
 async function syncGoogleFit(token) {
   const el = document.getElementById('gfitSyncResult');
@@ -4331,6 +4333,7 @@ loadScript('ocr-engine.js');
 
 renderAll();
 applyStoredTheme();
+checkOAuthRedirect(); // must run AFTER showToast is defined
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
