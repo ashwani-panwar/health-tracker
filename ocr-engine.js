@@ -38,25 +38,32 @@ window.OCREngine = {
     const result = { steps: null, calories: null, moveMinutes: null, distance: null, heartPoints: null };
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
+    // Normalize commas in numbers: "7,603" → "7603" throughout text
+    const normText = text.replace(/(\d),(\d{3})/g, '$1$2');
+    const normLines = normText.split('\n').map(l => l.trim()).filter(Boolean);
+
     // STRATEGY 1: Find "Heart Pts  Steps" line — anchor for Google Fit layout
-    const hpStepsIdx = lines.findIndex(l => /heart\s*pts/i.test(l) && /steps/i.test(l));
+    const hpStepsIdx = normLines.findIndex(l => /heart\s*pts/i.test(l) && /steps/i.test(l));
     if (hpStepsIdx >= 0) {
-      // Ring numbers are on the line(s) ABOVE this label
-      // Collect all numbers from 1-2 lines above
-      const above = (lines[hpStepsIdx - 1] || '') + ' ' + (lines[hpStepsIdx - 2] || '');
-      const ringNums = above.match(/\d+/g) || [];
-      if (ringNums.length >= 2) {
-        result.heartPoints = parseInt(ringNums[0]);
-        result.steps       = parseInt(ringNums[ringNums.length - 1]); // steps = last/larger number
-      } else if (ringNums.length === 1) {
-        result.steps = parseInt(ringNums[0]);
+      // Collect numbers from 1-3 lines above — the ring shows Heart Pts (top) and Steps (bottom)
+      const aboveLines = normLines.slice(Math.max(0, hpStepsIdx - 3), hpStepsIdx);
+      const allAboveNums = aboveLines.join(' ').match(/\d+/g) || [];
+      const parsed = allAboveNums.map(Number);
+
+      if (parsed.length >= 2) {
+        // Steps is the LARGEST number (usually 4 digits), Heart Pts is smaller
+        const maxVal = Math.max(...parsed);
+        const minVal = Math.min(...parsed);
+        result.steps       = maxVal;
+        result.heartPoints = minVal;
+      } else if (parsed.length === 1) {
+        result.steps = parsed[0];
       }
 
-      // Data row: find line with "Cal" label — numbers are on line ABOVE it
-      for (let i = hpStepsIdx + 1; i < Math.min(hpStepsIdx + 6, lines.length); i++) {
-        if (/\bcal\b/i.test(lines[i])) {
-          // Numbers should be on previous line: "598  0.58  13"
-          const numLine = lines[i - 1] || '';
+      // Data row: find line with "Cal" label
+      for (let i = hpStepsIdx + 1; i < Math.min(hpStepsIdx + 6, normLines.length); i++) {
+        if (/\bcal\b/i.test(normLines[i])) {
+          const numLine = normLines[i - 1] || '';
           const nums = numLine.match(/[\d]+(?:\.\d+)?/g) || [];
           if (nums.length >= 3) {
             result.calories    = parseInt(nums[0]);
@@ -68,32 +75,32 @@ window.OCREngine = {
           } else if (nums.length === 1) {
             result.calories = parseInt(nums[0]);
           }
-          // Also check if numbers are on same line as "Cal km Move Min"
           if (!result.calories) {
-            const sameLineNums = lines[i].match(/\d+/g) || [];
-            if (sameLineNums.length) result.calories = parseInt(sameLineNums[0]);
+            const sameNums = normLines[i].match(/\d+/g) || [];
+            if (sameNums.length) result.calories = parseInt(sameNums[0]);
           }
           break;
         }
       }
     }
 
-    // STRATEGY 2: Fallbacks if layout wasn't detected
+    // STRATEGY 2: Look for "X,XXX steps" or "X steps" pattern (comma-normalized)
     if (!result.steps) {
-      const m = text.match(/(\d{3,6})\s*\n?\s*steps/i) || text.match(/steps[:\s\n]+(\d{3,6})/i);
-      if (m) result.steps = parseInt(m[1].replace(/,/g, ''));
+      const m = normText.match(/(\d{3,6})\s*\n?\s*steps/i) ||
+                normText.match(/steps[:\s\n]+(\d{3,6})/i) ||
+                text.replace(/(\d),(\d{3})/g,'$1$2').match(/(\d{4,6})/); // 4-5 digit number is likely steps
+      if (m) result.steps = parseInt(m[1]);
     }
     if (!result.calories) {
-      // "598\nCal" or "598 Cal" — NOT "598 kcal" which is food
-      const m = text.match(/(\d{2,4})\s*\n\s*Cal\b/i) || text.match(/\bCal\b[^\n]*\n[^\n]*?(\d{2,4})/i);
+      const m = normText.match(/(\d{2,4})\s*\n\s*Cal\b/i) || normText.match(/\bCal\b[^\n]*\n[^\n]*?(\d{2,4})/i);
       if (m) result.calories = parseInt(m[1]);
     }
     if (!result.moveMinutes) {
-      const m = text.match(/(\d{1,3})\s*\n?\s*move\s*min/i) || text.match(/move\s*min[:\s\n]+(\d{1,3})/i);
+      const m = normText.match(/(\d{1,3})\s*\n?\s*move\s*min/i) || normText.match(/move\s*min[:\s\n]+(\d{1,3})/i);
       if (m) result.moveMinutes = parseInt(m[1]);
     }
     if (!result.distance) {
-      const m = text.match(/(\d+\.\d+)\s*\n?\s*km/i);
+      const m = normText.match(/(\d+\.\d+)\s*\n?\s*km/i);
       if (m) result.distance = parseFloat(m[1]);
     }
 
@@ -207,65 +214,77 @@ window.OCREngine = {
       ['bodyType',        [/body\s*type/i],                                           'str' ],
     ];
 
-    // ── NUMBER EXTRACTOR ──
-    // Extracts the PRIMARY value from a string (first/largest meaningful number)
-    function extractNum(str, type) {
+    // ── PRIMARY VALUE EXTRACTOR ──
+    // The scale app format: "79.45kg ◎ 0.5kg  Weight"
+    //   - Main value: 79.45  (FIRST number, or largest if delta is smaller)
+    //   - Delta:       0.5   (small number after ◎ ↓ ↑ or similar symbol)
+    //   - Label: Weight
+    // Key insight: delta is always SMALLER than the main value
+    // and appears after a symbol (◎ ↑ ↓ • ▲ ▼ ~ ≈)
+    function extractPrimary(line, type) {
       if (type === 'str') {
-        // For body type, extract word like Standard/Athletic/Obese
-        const m = str.match(/\b(standard|athletic|obese|slim|fit|normal|overfat)\b/i);
+        const m = line.match(/\b(standard|athletic|obese|slim|fit|normal|overfat)\b/i);
         return m ? m[1] : null;
       }
-      // Strip small delta values like "↓ 0.2kg" or "◎ 0.5kg" or "26bpm" after main value
-      // These appear as small secondary numbers in the scale app
-      // The main value is always the FIRST or LARGEST number on the line
-      const nums = str.match(/\d{1,4}(?:\.\d+)?/g) || [];
-      if (!nums.length) return null;
+
+      // Remove the label words to isolate numbers
+      let numStr = line
+        .replace(/weight|body\s*fat|fat\s*rate|muscle\s*mass|skeletal\s*muscle|bone\s*mass|body\s*water|moisture\s*rate|lean\s*body\s*mass|lean\s*mass|visceral\s*fat|visceral|subcutaneous|protein|metabolic\s*age|body\s*age|standard\s*weight|body\s*type|heart\s*rate|obesity\s*level|\bbmr\b|basal\s*metabolic|\bbmi\b/gi, ' ')
+        .replace(/kg|kcal|cal|bpm|lbs/gi, ' ');
+
+      // Extract all numbers
+      const allNums = numStr.match(/\d+(?:\.\d+)?/g) || [];
+      if (!allNums.length) return null;
+
       if (type === 'kcal') {
-        // BMR is 3-4 digits like 1582
-        const big = nums.find(n => parseFloat(n) > 500);
+        // BMR: find number > 500
+        const big = allNums.find(n => parseFloat(n) > 500);
         return big ? parseFloat(big) : null;
       }
       if (type === 'bpm') {
-        const bpm = nums.find(n => parseFloat(n) >= 40 && parseFloat(n) <= 220);
+        const bpm = allNums.find(n => { const v = parseFloat(n); return v >= 40 && v <= 220; });
         return bpm ? parseFloat(bpm) : null;
       }
-      // For kg/pct/num: take the first number (main value, delta comes after)
-      return parseFloat(nums[0]);
+
+      // For weight(kg): find number 30-300
+      if (type === 'kg') {
+        const kg = allNums.find(n => { const v = parseFloat(n); return v >= 1 && v <= 300; });
+        return kg ? parseFloat(kg) : null;
+      }
+
+      // For pct: find number 0-100
+      if (type === 'pct') {
+        const pct = allNums.find(n => { const v = parseFloat(n); return v >= 0.1 && v <= 100; });
+        return pct ? parseFloat(pct) : null;
+      }
+
+      // Generic: return first reasonable number
+      // Filter out tiny delta values (< 2 when main value should be larger)
+      const floats = allNums.map(parseFloat);
+      const max = Math.max(...floats);
+      // If max is significantly larger than first, it's probably the main value
+      if (max > floats[0] * 3 && floats[0] < 2) return max;
+      return floats[0];
     }
 
     // ── BIDIRECTIONAL LINE SCANNER ──
-    // For each line, check if it contains a label AND value together
-    // OR if the label is on adjacent line with value on current line
     function scanMetric(labelRegexes, type) {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        const isLabel = labelRegexes.some(r => r.test(line));
-
-        if (isLabel) {
-          // Layout A: label line itself has inline number → "BMI: 25.0" or "BMI 25.0"
-          const inlineNum = extractNum(line.replace(labelRegexes.find(r => r.test(line)), ''), type);
-          if (inlineNum !== null) return inlineNum;
-
-          // Layout A continued: value on NEXT line → label\nvalue
-          if (lines[i + 1]) {
-            const nxt = extractNum(lines[i + 1], type);
-            if (nxt !== null) return nxt;
-          }
-          // value on PREVIOUS line
-          if (lines[i - 1]) {
-            const prv = extractNum(lines[i - 1], type);
-            if (prv !== null) return prv;
-          }
-        }
-
-        // Layout B: value is ON THIS LINE, label is on SAME LINE after value
-        // e.g. "21.6% ◎ 0.2% Body Fat Rate"
-        // e.g. "56.9kg ◎ 0.2kg Muscle Mass"
         const hasLabel = labelRegexes.some(r => r.test(line));
+
         if (hasLabel) {
-          // Already handled above — but extract first number from full line
-          const fullNum = extractNum(line, type);
-          if (fullNum !== null) return fullNum;
+          // Try extracting from this line first (inline format)
+          const val = extractPrimary(line, type);
+          if (val !== null) return val;
+
+          // Try adjacent lines (label on one line, value on next/prev)
+          for (const adj of [lines[i+1], lines[i-1]]) {
+            if (adj) {
+              const v = extractPrimary(adj, type);
+              if (v !== null) return v;
+            }
+          }
         }
       }
       return null;

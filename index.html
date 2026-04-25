@@ -33,6 +33,42 @@
       --radius-sm: 10px;
     }
 
+    /* Light theme */
+    body.theme-light {
+      --bg: #f5f5f8;
+      --surface: #ffffff;
+      --surface2: #f0f0f5;
+      --border: #00000012;
+      --border2: #0000001a;
+      --accent: #5a8a00;
+      --accent2: #007a60;
+      --accent3: #d44a10;
+      --text: #111118;
+      --text2: #444466;
+      --text3: #888899;
+      --red: #cc2244;
+      --yellow: #aa8800;
+    }
+
+    /* Dynamic / system theme */
+    @media (prefers-color-scheme: light) {
+      body.theme-auto {
+        --bg: #f5f5f8;
+        --surface: #ffffff;
+        --surface2: #f0f0f5;
+        --border: #00000012;
+        --border2: #0000001a;
+        --accent: #5a8a00;
+        --accent2: #007a60;
+        --accent3: #d44a10;
+        --text: #111118;
+        --text2: #444466;
+        --text3: #888899;
+        --red: #cc2244;
+        --yellow: #aa8800;
+      }
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
     html, body {
@@ -767,7 +803,34 @@
     .ai-item-val { font-family: 'Syne', sans-serif; font-size: 11px; color: var(--accent2); }
     .confidence-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
 
-    /* Body comparison delta */
+    /* Body visual diagram */
+    .body-visual-svg { display:block; margin:0 auto; max-width:320px; width:100%; }
+    .body-region { cursor:pointer; transition:opacity 0.2s; }
+    .body-region:hover { opacity:0.8; }
+    .body-label-line { stroke-width:1; stroke-dasharray:3,2; }
+    .body-label-box {
+      background:var(--surface2);
+      border:1px solid var(--border2);
+      border-radius:8px;
+      padding:4px 8px;
+      position:absolute;
+      font-size:9px;
+      line-height:1.4;
+      pointer-events:none;
+      min-width:80px;
+      text-align:center;
+    }
+    .body-label-box .blb-metric { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; }
+    .body-label-box .blb-name { color:var(--text3); letter-spacing:0.5px; text-transform:uppercase; font-size:8px; }
+    .body-label-box .blb-delta { font-size:9px; margin-top:1px; }
+
+    /* Timeline */
+    .timeline-tab {
+      padding:5px 10px; border-radius:12px; font-size:9px; letter-spacing:0.5px;
+      border:1px solid var(--border); background:var(--surface2); color:var(--text3);
+      cursor:pointer; transition:all 0.15s; font-family:'JetBrains Mono',monospace;
+    }
+    .timeline-tab.active { background:var(--accent); color:#000; border-color:var(--accent); }
     .comp-cell { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 8px; text-align: center; }
     .comp-metric { font-size: 8px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
     .comp-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; line-height: 1; }
@@ -1182,6 +1245,21 @@
 
       <div class="section-title">Body Metrics <span>composition</span></div>
 
+      <!-- BODY VISUAL DIAGRAM -->
+      <div class="card" id="bodyVisualCard" style="display:none">
+        <div class="card-label">Body Composition Map</div>
+        <div id="bodyVisualWrap" style="position:relative;width:100%;user-select:none"></div>
+      </div>
+
+      <!-- TIMELINE CHART -->
+      <div class="card" id="bodyTimelineCard" style="display:none">
+        <div class="card-label">Trend Timeline</div>
+        <!-- Metric selector tabs -->
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px" id="timelineTabs"></div>
+        <canvas id="timelineCanvas" style="width:100%;height:160px;display:block"></canvas>
+        <div style="font-size:9px;color:var(--text3);margin-top:6px;text-align:center" id="timelineLabel"></div>
+      </div>
+
       <!-- SCALE SCREENSHOT SCAN -->
       <div class="card" style="border-color:rgba(200,255,0,0.2)">
         <div class="card-label" style="color:var(--accent)">📷 Scan Body Scale / App Screenshot</div>
@@ -1227,7 +1305,6 @@
       <div id="bodyCompSection" style="display:none">
         <div class="section-title" style="margin-top:8px">Changes <span>vs yesterday &amp; last week</span></div>
         <div class="card">
-          <!-- Column headers -->
           <div style="display:flex;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:4px">
             <div style="flex:1;font-size:8px;color:var(--text3);letter-spacing:1px">METRIC</div>
             <div style="width:52px;text-align:right;font-size:8px;color:var(--text3);letter-spacing:1px">NOW</div>
@@ -1309,6 +1386,27 @@
           <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">App Cache</div>
           <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;font-size:11px" onclick="forceRefreshApp()">🔄 Force Refresh App (clear cache)</button>
           <div style="font-size:9px;color:var(--text3)" id="appVersionLabel">Version: loading...</div>
+        </div>
+        <div class="divider"></div>
+        <!-- Theme -->
+        <div style="margin-bottom:8px">
+          <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Theme</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary" id="themeBtn-dark" onclick="setTheme('dark')" style="flex:1;font-size:10px">🌙 Dark</button>
+            <button class="btn btn-secondary" id="themeBtn-light" onclick="setTheme('light')" style="flex:1;font-size:10px">☀️ Light</button>
+            <button class="btn btn-secondary" id="themeBtn-auto" onclick="setTheme('auto')" style="flex:1;font-size:10px">🔄 Auto</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <!-- Data Export / Import -->
+        <div style="margin-bottom:8px">
+          <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Data Backup</div>
+          <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;font-size:11px" onclick="exportData()">📤 Export Data (JSON file)</button>
+          <label class="btn btn-secondary" style="width:100%;text-align:center;cursor:pointer;display:block;font-size:11px">
+            📥 Import Data (restore backup)
+            <input type="file" accept=".json" style="display:none" onchange="importData(this)" />
+          </label>
+          <div style="font-size:9px;color:var(--text3);margin-top:4px;line-height:1.5">Export saves all your meals, scores, body metrics and settings as a JSON file. Import restores them on any device.</div>
         </div>
         <div class="divider"></div>
         <button class="btn btn-danger" style="width:100%;margin-top:4px" onclick="clearAllData()">⚠ Clear All Data</button>
@@ -1414,10 +1512,35 @@ let S = loadState();
     if (S.today.score !== null) {
       S.dailyScores.push({ date: S.today.date, score: S.today.score });
     }
-    S.today = defaultState().today;
+    const fresh = defaultState().today;
+    fresh.date = todayStr();
+    S.today = fresh;
     save(S);
   }
 })();
+
+// Auto new-day at midnight based on device clock
+function scheduleMidnightReset() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 500); // 00:00:00.500 next day
+  const msUntilMidnight = midnight - now;
+  setTimeout(() => {
+    if (S.today.date !== todayStr()) {
+      if (S.today.score !== null) {
+        S.dailyScores.push({ date: S.today.date, score: S.today.score });
+      }
+      const fresh = defaultState().today;
+      fresh.date = todayStr();
+      S.today = fresh;
+      save(S);
+      renderAll();
+      showToast('🌅 New day started automatically!');
+    }
+    scheduleMidnightReset(); // reschedule for next midnight
+  }, msUntilMidnight);
+}
+scheduleMidnightReset();
 
 // ═══════════════════════════════════════════
 //  NAV
@@ -1861,6 +1984,334 @@ function renderBody() {
       </div>
     `).join('');
   }
+
+  // Render body visual and timeline
+  renderBodyVisual(latest, metrics);
+  renderBodyTimeline(metrics, 'fat');
+}
+
+// ═══════════════════════════════════════════
+//  BODY VISUAL DIAGRAM
+//  SVG human silhouette with annotated fat/muscle regions
+// ═══════════════════════════════════════════
+function renderBodyVisual(m, history) {
+  const card = document.getElementById('bodyVisualCard');
+  const wrap = document.getElementById('bodyVisualWrap');
+  if (!m || (!m.fat && !m.muscle && !m.visceral)) { card.style.display='none'; return; }
+  card.style.display = 'block';
+
+  const prev = history.length >= 2 ? history[history.length - 2] : null;
+
+  // Color helpers
+  function fatColor(pct) {
+    if (!pct) return '#555570';
+    if (pct > 30) return '#ff4466';
+    if (pct > 25) return '#ffcc00';
+    if (pct > 18) return '#ff9900';
+    return '#00ffc8';
+  }
+  function visceralColor(v) {
+    if (!v) return '#555570';
+    if (v > 14) return '#ff4466';
+    if (v > 12) return '#ffcc00';
+    if (v > 9)  return '#ff9900';
+    return '#00ffc8';
+  }
+  function muscleColor(kg) {
+    if (!kg) return '#555570';
+    if (kg > 40) return '#c8ff00';
+    if (kg > 32) return '#00ffc8';
+    return '#8888aa';
+  }
+  function delta(cur, prevVal, unit, lowerBetter) {
+    if (!prev || prevVal == null || cur == null) return '';
+    const d = Math.round((cur - prevVal) * 10) / 10;
+    if (d === 0) return `<span style="color:var(--text3)">→ same</span>`;
+    const improved = lowerBetter ? d < 0 : d > 0;
+    const col = improved ? 'var(--accent)' : 'var(--red)';
+    const arrow = d > 0 ? '↑' : '↓';
+    return `<span style="color:${col}">${arrow}${Math.abs(d)}${unit}</span>`;
+  }
+
+  // Subcutaneous fat opacity — more fat = more visible yellow layer
+  const subFatPct = m.subcutaneous || m.fat || 20;
+  const subOpacity = Math.min(0.9, 0.2 + (subFatPct / 40));
+  // Abdominal (visceral) fill
+  const viscFill = visceralColor(m.visceral);
+  const viscOpacity = m.visceral ? Math.min(0.85, 0.3 + m.visceral / 20) : 0.3;
+
+  // Build label data
+  const labels = [];
+
+  if (m.fat != null) labels.push({
+    id: 'fat', x: 78, y: 175, side: 'left',
+    metric: m.fat + '%', name: 'Body Fat',
+    color: fatColor(m.fat),
+    delta: delta(m.fat, prev?.fat, '%', true)
+  });
+  if (m.visceral != null) labels.push({
+    id: 'visceral', x: 162, y: 210, side: 'right',
+    metric: m.visceral + '', name: 'Visceral Fat',
+    color: visceralColor(m.visceral),
+    delta: delta(m.visceral, prev?.visceral, '', true)
+  });
+  if (m.subcutaneous != null) labels.push({
+    id: 'subcut', x: 78, y: 240, side: 'left',
+    metric: m.subcutaneous + '%', name: 'Subcut. Fat',
+    color: fatColor(m.subcutaneous),
+    delta: delta(m.subcutaneous, prev?.subcutaneous, '%', true)
+  });
+  if (m.muscle != null) labels.push({
+    id: 'muscle', x: 162, y: 150, side: 'right',
+    metric: m.muscle + 'kg', name: 'Muscle',
+    color: muscleColor(m.muscle),
+    delta: delta(m.muscle, prev?.muscle, 'kg', false)
+  });
+  if (m.lean != null) labels.push({
+    id: 'lean', x: 162, y: 280, side: 'right',
+    metric: m.lean + 'kg', name: 'Lean Mass',
+    color: 'var(--accent)',
+    delta: delta(m.lean, prev?.lean, 'kg', false)
+  });
+  if (m.weight != null) labels.push({
+    id: 'weight', x: 120, y: 80, side: 'center',
+    metric: m.weight + 'kg', name: 'Weight',
+    color: 'var(--text)',
+    delta: delta(m.weight, prev?.weight, 'kg', true)
+  });
+  if (m.bmi != null) labels.push({
+    id: 'bmi', x: 120, y: 370, side: 'center',
+    metric: 'BMI ' + m.bmi, name: m.bmi > 27.5 ? '⚠ Overweight' : m.bmi > 25 ? 'Borderline' : '✓ Normal',
+    color: m.bmi > 27.5 ? 'var(--red)' : m.bmi > 25 ? 'var(--yellow)' : 'var(--accent2)',
+    delta: ''
+  });
+
+  // SVG human silhouette (front view — stylized anatomical)
+  const svgH = 420;
+  const svgW = 240;
+
+  const svg = `<svg viewBox="0 0 ${svgW} ${svgH}" class="body-visual-svg" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="visceralGrad" cx="50%" cy="50%">
+        <stop offset="0%" stop-color="${viscFill}" stop-opacity="${viscOpacity}"/>
+        <stop offset="100%" stop-color="${viscFill}" stop-opacity="0.1"/>
+      </radialGradient>
+      <radialGradient id="subFatGrad" cx="50%" cy="40%">
+        <stop offset="0%" stop-color="#ffcc44" stop-opacity="${subOpacity * 0.6}"/>
+        <stop offset="100%" stop-color="#ffcc44" stop-opacity="${subOpacity * 0.15}"/>
+      </radialGradient>
+    </defs>
+
+    <!-- ── BODY SILHOUETTE ── -->
+    <!-- Legs -->
+    <path d="M 88 310 Q 80 340 78 380 Q 77 400 82 410 Q 90 415 98 412 Q 104 408 104 395 Q 106 355 108 330" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
+    <path d="M 152 310 Q 160 340 162 380 Q 163 400 158 410 Q 150 415 142 412 Q 136 408 136 395 Q 134 355 132 330" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
+    <!-- Torso -->
+    <path d="M 82 170 Q 75 200 76 240 Q 76 280 80 310 Q 90 320 120 322 Q 150 320 160 310 Q 164 280 164 240 Q 165 200 158 170 Q 148 160 120 158 Q 92 160 82 170 Z" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
+    <!-- Arms -->
+    <path d="M 82 170 Q 68 178 62 200 Q 58 220 60 248 Q 62 260 70 262 Q 78 264 82 252 Q 85 235 86 215 Q 87 195 85 178 Z" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
+    <path d="M 158 170 Q 172 178 178 200 Q 182 220 180 248 Q 178 260 170 262 Q 162 264 158 252 Q 155 235 154 215 Q 153 195 155 178 Z" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
+    <!-- Head + neck -->
+    <ellipse cx="120" cy="108" rx="26" ry="30" fill="#2a2a3a" stroke="#ffffff20" stroke-width="1"/>
+    <rect x="113" y="135" width="14" height="20" rx="4" fill="#2a2a3a"/>
+
+    <!-- ── SUBCUTANEOUS FAT LAYER (yellow, wraps body) ── -->
+    <path d="M 79 172 Q 70 202 71 244 Q 71 282 77 312 Q 88 324 120 326 Q 152 324 163 312 Q 169 282 169 244 Q 169 202 161 172 Q 148 158 120 155 Q 92 158 79 172 Z"
+      fill="url(#subFatGrad)" stroke="#ffcc4430" stroke-width="1"/>
+
+    <!-- ── VISCERAL FAT (abdominal region) ── -->
+    <ellipse cx="120" cy="228" rx="30" ry="35" fill="url(#visceralGrad)"/>
+
+    <!-- ── MUSCLE LINES (show definition) ── -->
+    ${m.muscle && m.muscle > 35 ? `
+    <line x1="112" y1="175" x2="112" y2="260" stroke="#c8ff0030" stroke-width="2" stroke-dasharray="4,4"/>
+    <line x1="128" y1="175" x2="128" y2="260" stroke="#c8ff0030" stroke-width="2" stroke-dasharray="4,4"/>
+    <path d="M 95 195 Q 120 185 145 195" fill="none" stroke="#00ffc820" stroke-width="2"/>
+    <path d="M 95 215 Q 120 205 145 215" fill="none" stroke="#00ffc820" stroke-width="2"/>
+    ` : ''}
+
+    <!-- ── CONNECTOR LINES TO LABELS ── -->
+    ${labels.map(l => {
+      // anchor points on body based on region
+      const anchors = {
+        fat:      [94, 220],  visceral: [120, 228],
+        subcut:   [94, 250],  muscle:   [146, 200],
+        lean:     [140, 270], weight:   [120, 155],
+        bmi:      [120, 315]
+      };
+      const [ax, ay] = anchors[l.id] || [120, 240];
+      const lx = l.side === 'left' ? 40 : l.side === 'right' ? 195 : 120;
+      const ly = l.y;
+      return `<line x1="${ax}" y1="${ay}" x2="${lx + 40}" y2="${ly}"
+        stroke="${l.color}" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>
+      <circle cx="${ax}" cy="${ay}" r="3" fill="${l.color}" opacity="0.8"/>`;
+    }).join('')}
+
+    <!-- ── LABEL BOXES ── -->
+    ${labels.map(l => {
+      const lx = l.side === 'left' ? 2 : l.side === 'right' ? 152 : 74;
+      const boxW = 82;
+      const hasD = l.delta ? true : false;
+      const boxH = hasD ? 38 : 30;
+      return `<g>
+        <rect x="${lx}" y="${l.y - 14}" width="${boxW}" height="${boxH}" rx="6"
+          fill="#111118" stroke="${l.color}44" stroke-width="1" opacity="0.92"/>
+        <text x="${lx + boxW/2}" y="${l.y + 2}" text-anchor="middle"
+          font-family="Syne,sans-serif" font-weight="700" font-size="11" fill="${l.color}">${l.metric}</text>
+        <text x="${lx + boxW/2}" y="${l.y + 13}" text-anchor="middle"
+          font-family="JetBrains Mono,monospace" font-size="7.5" fill="#8888aa">${l.name}</text>
+        ${l.delta ? `<text x="${lx + boxW/2}" y="${l.y + 24}" text-anchor="middle"
+          font-size="8" fill="#aaaacc">${l.delta.replace(/<[^>]+>/g,'')}</text>` : ''}
+      </g>`;
+    }).join('')}
+
+  </svg>`;
+
+  wrap.innerHTML = svg;
+  card.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════
+//  BODY TIMELINE CHART (Canvas-based)
+// ═══════════════════════════════════════════
+let activeTimelineMetric = 'fat';
+
+function renderBodyTimeline(metrics, metric) {
+  const card = document.getElementById('bodyTimelineCard');
+  if (!metrics || metrics.length < 2) { card.style.display='none'; return; }
+  card.style.display = 'block';
+  activeTimelineMetric = metric || activeTimelineMetric;
+
+  // Build tabs
+  const metricDefs = [
+    { key:'weight', label:'Weight', unit:'kg', color:'#f0f0f5' },
+    { key:'fat',    label:'Body Fat', unit:'%', color:'#ff4466' },
+    { key:'muscle', label:'Muscle', unit:'kg', color:'#c8ff00' },
+    { key:'visceral', label:'Visceral', unit:'', color:'#ffcc00' },
+    { key:'lean',   label:'Lean', unit:'kg', color:'#00ffc8' },
+    { key:'subcutaneous', label:'Subcut%', unit:'%', color:'#ff9900' },
+    { key:'bmi',    label:'BMI', unit:'', color:'#8888ff' },
+    { key:'water',  label:'Water%', unit:'%', color:'#44aaff' },
+  ].filter(d => metrics.some(m => m[d.key] != null));
+
+  const tabsEl = document.getElementById('timelineTabs');
+  tabsEl.innerHTML = metricDefs.map(d =>
+    `<button class="timeline-tab ${d.key === activeTimelineMetric ? 'active' : ''}"
+      onclick="renderBodyTimeline(S.bodyMetrics,'${d.key}')">${d.label}</button>`
+  ).join('');
+
+  const def = metricDefs.find(d => d.key === activeTimelineMetric) || metricDefs[0];
+  if (!def) return;
+
+  const pts = metrics
+    .filter(m => m[def.key] != null)
+    .slice(-12) // last 12 readings
+    .map(m => ({ date: m.date, val: m[def.key] }));
+
+  if (pts.length < 2) {
+    document.getElementById('timelineLabel').textContent = 'Need 2+ readings to show trend';
+    return;
+  }
+
+  const canvas = document.getElementById('timelineCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth || 300;
+  const H = 160;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const PAD = { top:20, right:12, bottom:30, left:40 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  const vals = pts.map(p => p.val);
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+  const pad   = range * 0.15;
+
+  const toX = i => PAD.left + (i / (pts.length - 1)) * chartW;
+  const toY = v => PAD.top + chartH - ((v - (minV - pad)) / (range + 2*pad)) * chartH;
+
+  // Background
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#111118';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = '#ffffff0a';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = PAD.top + (chartH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+    const label = (maxV + pad - (((range + 2*pad) / 4) * i)).toFixed(1);
+    ctx.fillStyle = '#555570';
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(label, PAD.left - 4, y + 3);
+  }
+
+  // Area fill
+  const color = def.color;
+  const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
+  grad.addColorStop(0, color + '44');
+  grad.addColorStop(1, color + '05');
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(pts[0].val));
+  pts.forEach((p, i) => { if (i > 0) ctx.lineTo(toX(i), toY(p.val)); });
+  ctx.lineTo(toX(pts.length - 1), PAD.top + chartH);
+  ctx.lineTo(toX(0), PAD.top + chartH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(toX(i), toY(p.val)) : ctx.lineTo(toX(i), toY(p.val)));
+  ctx.stroke();
+
+  // Dots + values
+  pts.forEach((p, i) => {
+    const x = toX(i); const y = toY(p.val);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#111118';
+    ctx.fill();
+    // Value label above dot
+    ctx.fillStyle = color;
+    ctx.font = 'bold 9px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.val + def.unit, x, y - 8);
+  });
+
+  // Date labels (first, middle, last)
+  const labelIndices = [0, Math.floor(pts.length / 2), pts.length - 1].filter((v,i,a) => a.indexOf(v) === i);
+  labelIndices.forEach(i => {
+    ctx.fillStyle = '#555570';
+    ctx.font = '8px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    const dateStr = pts[i].date.split(' ').slice(0,2).join(' '); // "25 Apr"
+    ctx.fillText(dateStr, toX(i), H - 6);
+  });
+
+  // Trend arrow
+  const first = pts[0].val; const last = pts[pts.length-1].val;
+  const trend = last - first;
+  const lowerBetter = ['fat','visceral','subcutaneous','bmi','weight'].includes(def.key);
+  const improved = lowerBetter ? trend < 0 : trend > 0;
+  const trendText = `${improved ? '▲ Improving' : '▼ Declining'} ${Math.abs(trend).toFixed(1)}${def.unit} over ${pts.length} readings`;
+  document.getElementById('timelineLabel').innerHTML =
+    `<span style="color:${improved ? 'var(--accent)' : 'var(--red)'}">${trendText}</span>`;
 }
 
 function renderHistory() {
@@ -1885,7 +2336,72 @@ function renderHistory() {
   document.getElementById('stepsTarget').textContent = S.settings.stepsTarget.toLocaleString();
   renderApiKeyStatus();
   const vl = document.getElementById('appVersionLabel');
-  if (vl) vl.textContent = 'Version: 2.5 · Cache: vitalcore-v5';
+  if (vl) vl.textContent = 'Version: 2.6 · Cache: vitalcore-v5';
+  renderThemeButtons();
+}
+
+// ─── THEME ───
+function setTheme(mode) {
+  document.body.classList.remove('theme-light','theme-auto');
+  if (mode === 'light') document.body.classList.add('theme-light');
+  else if (mode === 'auto') document.body.classList.add('theme-auto');
+  // dark = no class (default)
+  if (!S.settings) S.settings = defaultState().settings;
+  S.settings.theme = mode;
+  save(S);
+  renderThemeButtons();
+  showToast(`Theme: ${mode}`);
+}
+
+function applyStoredTheme() {
+  const mode = S.settings && S.settings.theme || 'dark';
+  document.body.classList.remove('theme-light','theme-auto');
+  if (mode === 'light') document.body.classList.add('theme-light');
+  else if (mode === 'auto') document.body.classList.add('theme-auto');
+}
+
+function renderThemeButtons() {
+  const mode = S.settings && S.settings.theme || 'dark';
+  ['dark','light','auto'].forEach(m => {
+    const btn = document.getElementById(`themeBtn-${m}`);
+    if (!btn) return;
+    btn.style.background = mode === m ? 'var(--accent)' : 'var(--surface2)';
+    btn.style.color      = mode === m ? '#000' : 'var(--text2)';
+    btn.style.borderColor= mode === m ? 'var(--accent)' : 'var(--border)';
+  });
+}
+
+// ─── EXPORT / IMPORT ───
+function exportData() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `vitalcore-backup-${todayStr().replace(/ /g,'-')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Data exported ✓');
+}
+
+function importData(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported.today || !imported.settings) throw new Error('Invalid backup file');
+      if (confirm(`Import backup from ${imported.today.date || 'unknown date'}?\nThis will replace your current data.`)) {
+        S = imported;
+        save(S);
+        applyStoredTheme();
+        renderAll();
+        showToast('Data imported ✓');
+      }
+    } catch(err) {
+      showToast('Import failed: invalid file');
+    }
+  };
+  reader.readAsText(input.files[0]);
 }
 
 function renderScoreList(container, items) {
@@ -2223,14 +2739,47 @@ function showToast(msg) {
 
 let pendingAiMeal = null;
 
-function aiEstimate() {
+async function aiEstimate() {
   const input = document.getElementById('aiFood').value.trim();
   if (!input) { showToast('Type a food description first'); return; }
   if (!window.NutritionDB) { showToast('Nutrition DB loading...'); return; }
 
   const result = window.NutritionDB.estimateNutrition(input);
+
   if (result.items.length === 0) {
-    showToast('Food not found — try manual entry below');
+    if (getGroqKey()) {
+      document.getElementById('aiResult').style.display = 'block';
+      document.getElementById('aiResultItems').innerHTML = `<div style="font-size:10px;color:var(--text2)">Not in database — asking Groq AI...</div>`;
+      document.getElementById('aiTotalCal').textContent = '...';
+      document.getElementById('aiTotalProt').textContent = '...';
+      try {
+        const prompt = `Estimate nutrition for: "${input}". Reply ONLY as JSON array: [{"food":"name","portion":"amount","cal":number,"prot":number,"carb":number,"fat":number,"fibre":number}]. Realistic values only.`;
+        const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${getGroqKey()}`},
+          body: JSON.stringify({model:'meta-llama/llama-4-scout-17b-16e-instruct',messages:[{role:'user',content:prompt}],max_tokens:300,temperature:0.1})
+        });
+        const data = await resp.json();
+        const text = data?.choices?.[0]?.message?.content || '';
+        const jm = text.match(/\[[\s\S]*?\]/);
+        if (jm) {
+          const items = JSON.parse(jm[0]);
+          const totalCal  = items.reduce((s,i)=>s+(i.cal||0),0);
+          const totalProt = Math.round(items.reduce((s,i)=>s+(i.prot||0),0)*10)/10;
+          const totalCarb = Math.round(items.reduce((s,i)=>s+(i.carb||0),0)*10)/10;
+          const totalFat  = Math.round(items.reduce((s,i)=>s+(i.fat||0),0)*10)/10;
+          pendingAiMeal = {name:input,cal:totalCal,prot:totalProt};
+          document.getElementById('aiTotalCal').textContent = totalCal+' kcal';
+          document.getElementById('aiTotalProt').textContent = totalProt+'g prot';
+          document.getElementById('aiResultItems').innerHTML = items.map(i=>
+            `<div class="ai-item"><div>${i.food} <span style="font-size:9px;color:var(--text3)">${i.portion||''}</span></div>
+            <div class="ai-item-val">${i.cal}kcal·${i.prot}g</div></div>`
+          ).join('')+`<div style="font-size:9px;color:var(--text3);margin-top:4px">Carb:${totalCarb}g · Fat:${totalFat}g · Groq AI</div>`;
+          document.getElementById('aiConfidence').textContent = `Groq Llama 4 AI estimate · ${items.length} item(s)`;
+          return;
+        }
+      } catch(e) {}
+    }
+    showToast('Food not found — add Groq key in Settings for AI lookup');
     return;
   }
 
@@ -2243,14 +2792,28 @@ function aiEstimate() {
   itemsDiv.innerHTML = result.items.map(item => {
     const confColor = item.confidence >= 0.9 ? 'var(--accent)' : item.confidence >= 0.7 ? 'var(--yellow)' : 'var(--accent3)';
     const confLabel = item.confidence >= 0.9 ? 'exact' : item.confidence >= 0.7 ? 'good' : 'approx';
-    return `<div class="ai-item">
-      <div>${item.name} <span style="font-size:9px;color:var(--text3)">(~${item.grams}g)</span></div>
-      <div class="ai-item-val"><span class="confidence-dot" style="background:${confColor}"></span>${item.cal}kcal·${item.prot}g <span style="font-size:8px;color:${confColor}">${confLabel}</span></div>
+    const micros = [item.carb!==null?`Carb:${item.carb}g`:'',item.fat!==null?`Fat:${item.fat}g`:'',
+      item.fibre!==null?`Fibre:${item.fibre}g`:'',item.sodium?`Na:${item.sodium}mg`:'',
+      item.calcium?`Ca:${item.calcium}mg`:'',item.iron?`Fe:${item.iron}mg`:'',
+      item.vitC?`VitC:${item.vitC}mg`:''].filter(Boolean).join(' · ');
+    const warn = item.warning?`<div style="font-size:9px;color:var(--accent3)">${item.warning}</div>`:'';
+    return `<div class="ai-item" style="flex-direction:column;align-items:flex-start;padding-bottom:8px">
+      <div style="display:flex;justify-content:space-between;width:100%">
+        <div>${item.name} <span style="font-size:9px;color:var(--text3)">(~${item.grams}g)</span></div>
+        <div class="ai-item-val"><span class="confidence-dot" style="background:${confColor}"></span>${item.cal}kcal·${item.prot}g <span style="font-size:8px;color:${confColor}">${confLabel}</span></div>
+      </div>
+      ${micros?`<div style="font-size:9px;color:var(--text3);margin-top:2px">${micros}</div>`:''}${warn}
     </div>`;
   }).join('');
 
-  const avgConf = result.items.reduce((a, b) => a + b.confidence, 0) / result.items.length;
-  document.getElementById('aiConfidence').textContent = `Confidence: ${Math.round(avgConf * 100)}% · ${result.items.length} item(s) matched`;
+  const microRow = [result.totalCarb?`Carb:${result.totalCarb}g`:'',result.totalFat?`Fat:${result.totalFat}g`:'',
+    result.totalFibre?`Fibre:${result.totalFibre}g`:'',result.totalSodium?`Na:${result.totalSodium}mg`:'',
+    result.totalCalcium?`Ca:${result.totalCalcium}mg`:'',result.totalIron?`Fe:${result.totalIron}mg`:'',
+    result.totalVitC?`VitC:${result.totalVitC}mg`:''].filter(Boolean).join(' · ');
+  if (microRow) itemsDiv.innerHTML += `<div style="font-size:9px;color:var(--text2);padding-top:6px;border-top:1px solid var(--border)">${microRow}</div>`;
+
+  const avgConf = result.items.reduce((a,b)=>a+b.confidence,0)/result.items.length;
+  document.getElementById('aiConfidence').textContent = `Confidence: ${Math.round(avgConf*100)}% · ${result.items.length} item(s)`;
   resDiv.style.display = 'block';
 }
 
@@ -2260,8 +2823,7 @@ function confirmAiLog() {
   S.today.meals.push({ name: meal.name, cal: meal.cal, prot: meal.prot });
   S.today.calories += meal.cal;
   S.today.protein += meal.prot;
-  save(S);
-  renderAll();
+  save(S); renderAll();
   document.getElementById('aiFood').value = '';
   document.getElementById('aiResult').style.display = 'none';
   pendingAiMeal = null;
@@ -2314,16 +2876,36 @@ async function scanFitnessScreenshot(input) {
     const d = window.OCREngine.parseFitness(result.rawText);
     const el = document.getElementById(cid);
     if (!d.steps && !d.calories) {
-      el.innerHTML = `<div class="insight-box">⚠ No data found. Try a screenshot showing steps and calories clearly.</div>`; return;
+      el.innerHTML = `<div class="insight-box">⚠ No data found. Try a clearer screenshot.<br/><small style="color:var(--text3)">${result.rawText.slice(0,100)}</small></div>`; return;
     }
-    let html = '<div class="ocr-extracted"><div style="font-size:10px;color:var(--accent2);margin-bottom:8px">✓ EXTRACTED</div>';
-    if (d.steps) html += `<div class="ocr-row"><span>Steps</span><span class="ocr-val">${d.steps.toLocaleString()}</span></div>`;
-    if (d.calories) html += `<div class="ocr-row"><span>Calories Burned</span><span class="ocr-val">${d.calories} kcal</span></div>`;
-    if (d.moveMinutes) html += `<div class="ocr-row"><span>Active Min</span><span class="ocr-val">${d.moveMinutes}</span></div>`;
-    if (d.distance) html += `<div class="ocr-row"><span>Distance</span><span class="ocr-val">${d.distance} km</span></div>`;
-    html += `</div><button class="btn btn-primary" style="width:100%;margin-top:8px" onclick='applyFitnessOcr(${JSON.stringify(d).replace(/'/g,"&#39;")})'>✓ Apply to Today</button>`;
-    el.innerHTML = html;
+    // Editable fields — user can correct OCR errors
+    el.innerHTML = `<div class="ocr-extracted">
+      <div style="font-size:10px;color:var(--accent2);margin-bottom:8px">✓ EXTRACTED — edit if needed</div>
+      <div class="ocr-row"><span>Steps</span>
+        <input type="number" id="ocrSteps" value="${d.steps||''}" placeholder="—"
+          style="width:90px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px;text-align:right" />
+      </div>
+      <div class="ocr-row"><span>Calories Burned</span>
+        <input type="number" id="ocrActCal" value="${d.calories||''}" placeholder="—"
+          style="width:90px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px;text-align:right" />
+      </div>
+      <div class="ocr-row"><span>Active Min</span>
+        <input type="number" id="ocrActMin" value="${d.moveMinutes||''}" placeholder="—"
+          style="width:90px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px;text-align:right" />
+      </div>
+      ${d.distance ? `<div class="ocr-row"><span>Distance</span><span class="ocr-val">${d.distance} km</span></div>` : ''}
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="applyFitnessOcrEdited()">✓ Apply to Today</button>`;
   });
+}
+
+function applyFitnessOcrEdited() {
+  const steps = parseInt(document.getElementById('ocrSteps')?.value);
+  const cals  = parseInt(document.getElementById('ocrActCal')?.value);
+  if (steps && steps > 0) S.today.steps = steps;
+  if (cals  && cals  > 0) S.today.activityCals = cals;
+  save(S); renderAll();
+  showToast('Fitness data applied ✓');
 }
 
 function applyFitnessOcr(d) {
@@ -2698,6 +3280,7 @@ loadScript('ocr-engine.js');
 // ═══════════════════════════════════════════
 
 renderAll();
+applyStoredTheme();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
