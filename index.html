@@ -1892,6 +1892,9 @@ function renderHeader() {
 function renderDashboard() {
   const { calories, protein, steps, workoutDone, workoutType, workoutDuration, score, breakdown } = S.today;
 
+  // Has anything been logged today?
+  const hasDataToday = S.today.meals.length > 0 || S.today.steps > 0 || S.today.workoutDone || S.today.activityCals > 0;
+
   // Macros
   document.getElementById('calDisplay').textContent = Math.round(calories);
   document.getElementById('proteinDisplay').textContent = r1(protein);
@@ -1916,7 +1919,7 @@ function renderDashboard() {
   }
 
   // Score ring
-  if (score !== null) {
+  if (score !== null && hasDataToday) {
     const circumference = 239;
     const offset = circumference - (score / 100) * circumference;
     document.getElementById('scoreRingCircle').style.strokeDashoffset = offset;
@@ -1954,17 +1957,18 @@ function renderDashboard() {
   momBar.innerHTML = recent.map(d => `<div class="mom-dot filled" title="${d.score}"></div>`).join('') +
     Array(Math.max(0, 7 - recent.length)).fill('<div class="mom-dot"></div>').join('');
 
-  // Breakdown
-  if (breakdown) {
+  // Breakdown — only show if scored AND has data logged today
+  const hasDataToday = S.today.meals.length > 0 || S.today.steps > 0 || S.today.workoutDone;
+  if (breakdown && hasDataToday) {
     document.getElementById('breakdownCard').style.display = 'block';
     const grid = document.getElementById('breakdownGrid');
     const items = [
-      { label: 'Protein', score: breakdown.protein, max: 30 },
-      { label: 'Calories', score: breakdown.calories, max: 20 },
-      { label: 'Quality', score: breakdown.quality, max: 15 },
+      { label: 'Protein',    score: breakdown.protein,     max: 30 },
+      { label: 'Calories',   score: breakdown.calories,    max: 20 },
+      { label: 'Quality',    score: breakdown.quality,     max: 15 },
       { label: 'Consistent', score: breakdown.consistency, max: 10 },
-      { label: 'Activity', score: breakdown.activity, max: 15 },
-      { label: 'Workout', score: breakdown.workout, max: 10 },
+      { label: 'Activity',   score: breakdown.activity,    max: 15 },
+      { label: 'Workout',    score: breakdown.workout,     max: 10 },
     ];
     grid.innerHTML = items.map(i => {
       const pct = i.score / i.max;
@@ -1976,6 +1980,8 @@ function renderDashboard() {
       </div>`;
     }).join('');
     document.getElementById('insightBox').innerHTML = getInsights();
+  } else {
+    document.getElementById('breakdownCard').style.display = 'none';
   }
 
   // ── Body comparison card on dashboard ──
@@ -3392,32 +3398,49 @@ function saveBodyMetrics() {
 
 function scoreDay() {
   const t = S.today;
-  const settings = S.settings;
 
-  // Protein (30)
-  let protein = 10;
+  // Don't score if nothing has been logged today
+  const hasData = t.meals.length > 0 || t.steps > 0 || t.workoutDone || t.activityCals > 0;
+  if (!hasData) {
+    showToast('Log some meals or activity first!');
+    return;
+  }
+
+  // Protein (30) — 0 if nothing logged
+  let protein = 0;
   if (t.protein >= 100) protein = 30;
   else if (t.protein >= 80) protein = 25;
   else if (t.protein >= 60) protein = 20;
+  else if (t.protein >= 40) protein = 12;
+  else if (t.protein > 0)   protein = 6;
 
-  // Calories (20)
-  let calories = 10;
+  // Calories (20) — 0 if nothing logged
+  let calories = 0;
   if (t.calories >= 1800 && t.calories <= 2200) calories = 20;
   else if (t.calories >= 1600 && t.calories < 1800) calories = 15;
   else if (t.calories > 2200 && t.calories <= 2500) calories = 15;
+  else if (t.calories >= 1200) calories = 8;
+  else if (t.calories > 0)     calories = 4;
 
-  // Quality (15) — based on number of meals and diversity
-  let quality = 5;
-  if (t.meals.length >= 3) quality = 10;
+  // Quality (15) — based on meal count
+  let quality = 0;
   if (t.meals.length >= 4) quality = 15;
+  else if (t.meals.length >= 3) quality = 10;
+  else if (t.meals.length >= 2) quality = 7;
+  else if (t.meals.length >= 1) quality = 4;
 
-  // Consistency (10) — streak bonus
-  let consistency = S.streak >= 3 ? 10 : S.streak >= 1 ? 7 : 5;
+  // Consistency (10) — streak bonus, only if they logged something
+  let consistency = 0;
+  if (t.meals.length > 0 || t.steps > 0) {
+    consistency = S.streak >= 3 ? 10 : S.streak >= 1 ? 7 : 5;
+  }
 
-  // Activity (15)
-  let activity = 5;
-  if (t.steps >= 8000) activity = 15;
+  // Activity (15) — 0 if no steps
+  let activity = 0;
+  if (t.steps >= 8000)      activity = 15;
   else if (t.steps >= 4000) activity = 10;
+  else if (t.steps >= 2000) activity = 5;
+  else if (t.steps > 0)     activity = 2;
 
   // Workout (10)
   let workout = 0;
@@ -3428,14 +3451,14 @@ function scoreDay() {
   S.today.breakdown = { protein, calories, quality, consistency, activity, workout };
   S.today.scored = true;
 
-  // Streak
+  // Streak — only counts if score >= 70
   if (total >= 70) {
     S.streak = (S.streak || 0) + 1;
   } else {
     S.streak = 0;
   }
 
-  // Archive
+  // Archive today's score
   const existing = S.dailyScores.findIndex(d => d.date === todayStr());
   if (existing >= 0) S.dailyScores[existing].score = total;
 
