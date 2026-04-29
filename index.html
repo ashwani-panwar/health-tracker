@@ -1961,7 +1961,6 @@ function renderDashboard() {
     Array(Math.max(0, 7 - recent.length)).fill('<div class="mom-dot"></div>').join('');
 
   // Breakdown — only show if scored AND has data logged today
-  const hasDataToday = S.today.meals.length > 0 || S.today.steps > 0 || S.today.workoutDone;
   if (breakdown && hasDataToday) {
     document.getElementById('breakdownCard').style.display = 'block';
     const grid = document.getElementById('breakdownGrid');
