@@ -1497,12 +1497,6 @@
 
       <div class="section-title">Body Metrics <span>composition</span></div>
 
-      <!-- BODY VISUAL DIAGRAM -->
-      <div class="card" id="bodyVisualCard" style="display:none">
-        <div class="card-label">Body Composition Map</div>
-        <div id="bodyVisualWrap" style="position:relative;width:100%;user-select:none"></div>
-      </div>
-
       <!-- TIMELINE CHART -->
       <div class="card" id="bodyTimelineCard" style="display:none">
         <div class="card-label">Trend Timeline</div>
@@ -1841,9 +1835,18 @@ function startMidnightScheduler() {
 
   scheduleNext();
 
-  // Also reset when app comes back from background (phone wake, tab switch)
+  // Also reset when app comes back from background, and auto-sync Google Fit
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) resetDay();
+    if (!document.hidden) {
+      resetDay();
+      // Auto-sync Fit if token is valid and last sync was >5 min ago
+      const tk = S.settings && S.settings.gfitToken;
+      const ex = S.settings && S.settings.gfitTokenExpiry;
+      const ls = S.settings && S.settings.gfitLastSync;
+      if (tk && ex && Date.now() < ex && (!ls || Date.now() - ls > 300000)) {
+        syncGoogleFit(tk);
+      }
+    }
   });
 }
 
@@ -1958,6 +1961,7 @@ function renderDashboard() {
     Array(Math.max(0, 7 - recent.length)).fill('<div class="mom-dot"></div>').join('');
 
   // Breakdown — only show if scored AND has data logged today
+  const hasDataToday = S.today.meals.length > 0 || S.today.steps > 0 || S.today.workoutDone;
   if (breakdown && hasDataToday) {
     document.getElementById('breakdownCard').style.display = 'block';
     const grid = document.getElementById('breakdownGrid');
@@ -2399,16 +2403,11 @@ function renderBody() {
     `).join('');
   }
 
-  // Render body visual and timeline
-  renderBodyVisual(latest, metrics);
+  // Render body timeline
   renderBodyTimeline(metrics, 'fat');
 }
 
-// ═══════════════════════════════════════════
-//  BODY VISUAL DIAGRAM
-//  SVG human silhouette with annotated fat/muscle regions
-// ═══════════════════════════════════════════
-function renderBodyVisual(m, history) {
+function renderBodyVisual(m, history) { return; // removed
   const card = document.getElementById('bodyVisualCard');
   const wrap = document.getElementById('bodyVisualWrap');
   if (!m || (!m.fat && !m.muscle && !m.visceral && !m.weight)) { card.style.display='none'; return; }
@@ -2889,12 +2888,11 @@ function renderGfitStatus() {
     if (btnT) btnT.textContent  = 'Sync Google Fit Now';
     if (btn)  { btn.style.background = '#e8f5e9'; btn.style.color = '#2e7d32'; btn.style.borderColor = '#a5d6a7'; }
   } else if (expired) {
-    delete S.settings.gfitToken;
-    save(S);
+    // Keep token in storage — connectGoogleFit will try silent re-auth
     dot.style.background = '#FBBC04';
     dot.style.boxShadow  = 'none';
-    if (msg)  { msg.textContent = 'Session expired — tap to sign in again'; msg.style.color = '#e65100'; }
-    if (btnT) btnT.textContent  = 'Sign in with Google';
+    if (msg)  { msg.textContent = 'Session expired — tap to refresh'; msg.style.color = '#e65100'; }
+    if (btnT) btnT.textContent  = 'Refresh Google Fit';
     if (btn)  { btn.style.background = '#fff'; btn.style.color = '#3c4043'; btn.style.borderColor = '#dadce0'; }
   } else {
     dot.style.background = '#ccc';
@@ -2925,8 +2923,8 @@ function connectGoogleFit() {
     return;
   }
 
-  // Has Client ID — launch OAuth popup directly (no modal)
-  launchGfitOAuth(clientId);
+  // Try silent re-auth first — avoids account picker if Google session exists in WebView
+  launchGfitOAuth(clientId, true);
 }
 
 function showGfitSignInModal() {
@@ -3047,26 +3045,32 @@ function saveAndConnectGfit() {
   setTimeout(() => launchGfitOAuth(id), 300);
 }
 
-function launchGfitOAuth(clientId) {
+function launchGfitOAuth(clientId, silent = false) {
   // Build redirect URI — must exactly match what's registered in Google Console
   // Use the full URL including index.html to be explicit
-  const path = window.location.pathname.endsWith('/') 
+  const path = window.location.pathname.endsWith('/')
     ? window.location.pathname + 'index.html'
     : window.location.pathname;
   const redirectUri = window.location.origin + path;
   const state = Math.random().toString(36).slice(2);
   sessionStorage.setItem('gfit_state', state);
+  // Track whether this is a silent (no-UI) attempt
+  if (silent) sessionStorage.setItem('gfit_silent', '1');
+  else        sessionStorage.removeItem('gfit_silent');
 
-  const authParams = new URLSearchParams({
+  const authParamsObj = {
     client_id:             clientId,
     redirect_uri:          redirectUri,
     response_type:         'token',
     scope:                 GFIT_SCOPES,
     state:                 state,
     include_granted_scopes:'true',
-    prompt:                'select_account',
-  });
+  };
+  // silent=true: prompt=none lets Google reuse existing session without showing UI
+  // silent=false: no prompt param — Google auto-selects account if session exists
+  if (silent) authParamsObj.prompt = 'none';
 
+  const authParams = new URLSearchParams(authParamsObj);
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${authParams}`;
 
   // Detect mobile — use full redirect (Chrome mobile blocks popups)
@@ -3074,8 +3078,8 @@ function launchGfitOAuth(clientId) {
 
   if (isMobile) {
     // Full-page redirect — checkOAuthRedirect() handles the return
-    showToast('Redirecting to Google sign in...');
-    setTimeout(() => { window.location.href = authUrl; }, 300);
+    if (!silent) showToast('Redirecting to Google sign in...');
+    setTimeout(() => { window.location.href = authUrl; }, silent ? 0 : 300);
     return;
   }
 
@@ -3120,13 +3124,34 @@ function launchGfitOAuth(clientId) {
   }, 500);
 }
 
-// Handle redirect back from OAuth (if popup was blocked)
+// Handle redirect back from OAuth (full-page redirect on mobile)
 function checkOAuthRedirect() {
-  const hash = window.location.hash;
+  const hash   = window.location.hash;
+  const search = window.location.search;
+
+  // Check for OAuth error (e.g. interaction_required from a silent prompt=none attempt)
+  if (search.includes('error=')) {
+    const sp  = new URLSearchParams(search.substring(1));
+    const err = sp.get('error');
+    if (err === 'interaction_required' || err === 'access_denied' || err === 'login_required') {
+      const wasSilent = sessionStorage.getItem('gfit_silent');
+      sessionStorage.removeItem('gfit_silent');
+      sessionStorage.removeItem('gfit_state');
+      history.replaceState(null, '', window.location.pathname);
+      if (wasSilent) {
+        // Silent re-auth failed — fall back to interactive sign-in
+        const clientId = GFIT_HARDCODED_ID || (S.settings && S.settings.gfitClientId);
+        if (clientId) setTimeout(() => launchGfitOAuth(clientId, false), 500);
+      }
+      return;
+    }
+  }
+
   if (!hash.includes('access_token')) return;
   const params = new URLSearchParams(hash.substring(1));
   const token  = params.get('access_token');
   const state  = params.get('state');
+  sessionStorage.removeItem('gfit_silent');
   if (token && state === sessionStorage.getItem('gfit_state')) {
     history.replaceState(null, '', window.location.pathname);
     if (!S.settings) S.settings = defaultState().settings;
@@ -3214,6 +3239,8 @@ async function syncGoogleFit(token) {
       S.today.workoutType     = strengthTypes.includes(latest.type) ? 'Strength' : 'Cardio';
       S.today.workoutDuration = latest.duration;
     }
+    if (!S.settings) S.settings = defaultState().settings;
+    S.settings.gfitLastSync = Date.now();
     save(S);
     renderAll();
 
@@ -4391,6 +4418,15 @@ renderAll();
 applyStoredTheme();
 checkOAuthRedirect();   // must run AFTER showToast is defined
 startMidnightScheduler(); // must run AFTER showToast is defined
+
+// Auto-sync Google Fit on every app load when token is valid
+(function autoSyncGfit() {
+  const token  = S.settings && S.settings.gfitToken;
+  const expiry = S.settings && S.settings.gfitTokenExpiry;
+  if (token && expiry && Date.now() < expiry) {
+    setTimeout(() => syncGoogleFit(token), 2000);
+  }
+})();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
