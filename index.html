@@ -3412,13 +3412,97 @@ function connectGoogleFit() {
   const clientId = GFIT_HARDCODED_ID || (S.settings && S.settings.gfitClientId);
 
   if (!clientId) {
-    // No Client ID anywhere — show setup modal
     showGfitSignInModal();
     return;
   }
 
-  // Try silent re-auth first — avoids account picker if Google session exists in WebView
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    // On mobile/WebView use a hidden iframe for silent refresh so the main page never navigates away
+    showToast('Refreshing Google session...');
+    silentRefreshGfitIframe(clientId)
+      .then(({ token: newToken, expiresIn }) => {
+        if (!S.settings) S.settings = defaultState().settings;
+        S.settings.gfitToken       = newToken;
+        S.settings.gfitTokenExpiry = Date.now() + (expiresIn * 1000);
+        save(S);
+        renderGfitStatus();
+        showToast('Google Fit reconnected ✓ Syncing...');
+        syncGoogleFit(newToken);
+      })
+      .catch(() => {
+        // Silent failed (Google session fully expired) — must do interactive sign-in
+        showToast('Session expired — signing in again...');
+        launchGfitOAuth(clientId, false);
+      });
+    return;
+  }
+
+  // Desktop: try silent popup first
   launchGfitOAuth(clientId, true);
+}
+
+function silentRefreshGfitIframe(clientId) {
+  return new Promise((resolve, reject) => {
+    const path = window.location.pathname.endsWith('/')
+      ? window.location.pathname + 'index.html'
+      : window.location.pathname;
+    const redirectUri = window.location.origin + path;
+    const state = Math.random().toString(36).slice(2);
+    sessionStorage.setItem('gfit_state', state);
+
+    const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+      client_id:              clientId,
+      redirect_uri:           redirectUri,
+      response_type:          'token',
+      scope:                  GFIT_SCOPES,
+      state:                  state,
+      include_granted_scopes: 'true',
+      prompt:                 'none',
+    });
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-200px;left:-200px;width:1px;height:1px;';
+    document.body.appendChild(iframe);
+
+    let settled = false;
+    const cleanup = () => {
+      settled = true;
+      sessionStorage.removeItem('gfit_state');
+      try { iframe.remove(); } catch(e) {}
+    };
+
+    const timer = setTimeout(() => {
+      if (!settled) { cleanup(); reject(new Error('timeout')); }
+    }, 15000);
+
+    iframe.onload = () => {
+      if (settled) return;
+      try {
+        const loc    = iframe.contentWindow.location;
+        const hash   = loc.hash   || '';
+        const search = loc.search || '';
+        if (hash.includes('access_token')) {
+          const p     = new URLSearchParams(hash.substring(1));
+          const token = p.get('access_token');
+          if (token && p.get('state') === state) {
+            clearTimeout(timer);
+            cleanup();
+            resolve({ token, expiresIn: parseInt(p.get('expires_in') || '3600') });
+          }
+        } else if (search.includes('error=')) {
+          clearTimeout(timer);
+          cleanup();
+          reject(new Error('interaction_required'));
+        }
+        // else: intermediate page load (e.g. Google CORS redirect) — wait for next load
+      } catch(e) {
+        // cross-origin (Google's servers) — ignore, wait for redirect back to our origin
+      }
+    };
+
+    iframe.src = authUrl;
+  });
 }
 
 function showGfitSignInModal() {
@@ -3559,7 +3643,10 @@ function launchGfitOAuth(clientId, silent = false) {
 
   if (isMobile) {
     // Full-page redirect — checkOAuthRedirect() handles the return
-    if (!silent) showToast('Redirecting to Google sign in...');
+    if (!silent) {
+      sessionStorage.setItem('gfit_return_page', currentPage);
+      showToast('Redirecting to Google sign in...');
+    }
     setTimeout(() => { window.location.href = authUrl; }, silent ? 0 : 300);
     return;
   }
@@ -3641,6 +3728,10 @@ function checkOAuthRedirect() {
     S.settings.gfitTokenExpiry = Date.now() + (expiresIn * 1000);
     save(S);
     renderAll();
+    // Navigate back to where user was (settings page where the GFit button lives)
+    const returnPage = sessionStorage.getItem('gfit_return_page') || 'settings';
+    sessionStorage.removeItem('gfit_return_page');
+    showPage(returnPage);
     showToast('Google Fit connected ✓ Syncing...');
     setTimeout(() => syncGoogleFit(token), 800);
   }
