@@ -823,17 +823,18 @@
     body.theme-lively #tab-log::before,
     body.theme-lively #tab-activity::before,
     body.theme-lively #tab-body::before,
-    body.theme-lively #tab-history::before {
+    body.theme-lively #tab-history::before,
+    body.theme-lively #tab-coach::before {
       content: '';
       position: fixed;
       inset: 0;
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      opacity: 0.12;
+      opacity: 0.22;
       pointer-events: none;
       z-index: 0;
-      filter: saturate(1.4) brightness(0.7);
+      filter: saturate(2.2) brightness(0.85);
     }
 
     body.theme-lively .content > .page.active > * { position: relative; z-index: 1; }
@@ -853,22 +854,27 @@
     body.theme-lively #tab-history.active::before {
       background-image: url('https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&q=60');
     }
+    body.theme-lively #tab-coach.active::before {
+      background-image: url('https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=800&q=60');
+    }
 
     /* Lively cards get glass effect */
     body.theme-lively .card {
-      background: rgba(10, 12, 20, 0.82);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(12, 16, 26, 0.62);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
     }
     body.theme-lively .bottom-nav {
-      background: rgba(8, 12, 18, 0.92);
+      background: rgba(8, 12, 22, 0.82);
       backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(200,255,0,0.18);
     }
 
     /* Lively hero images on dashboard cards */
     body.theme-lively .score-hero {
-      background: linear-gradient(135deg, rgba(200,255,0,0.08), transparent);
+      background: linear-gradient(135deg, rgba(200,255,0,0.14), rgba(0,252,200,0.05));
     }
 
     /* Google sign-in modal animation */
@@ -1151,8 +1157,7 @@
         <div id="bodyCompInsight" class="insight-box"></div>
       </div>
 
-      <!-- Score Button -->
-      <button class="btn btn-score" onclick="scoreDay()">⚡ Calculate Day Score</button>
+      <!-- Score auto-calculates when data is logged -->
 
       <!-- Score Breakdown (hidden until scored) -->
       <div class="card" id="breakdownCard" style="display:none">
@@ -1577,7 +1582,7 @@
       <div class="card" id="historyList">
         <div class="empty-state" id="historyEmpty">
           <div class="empty-icon">📊</div>
-          No scores yet.<br/>Complete a day and tap<br/>Calculate Day Score.
+          No scores yet.<br/>Log meals &amp; activity<br/>to build your history.
         </div>
       </div>
 
@@ -1684,6 +1689,11 @@
 
     </div>
 
+    <!-- COACH TAB -->
+    <div id="tab-coach" class="page">
+      <div id="coachContent" style="padding: 16px 0 80px"></div>
+    </div>
+
   </div><!-- /content -->
 
   <!-- BOTTOM NAV -->
@@ -1707,6 +1717,10 @@
     <div class="nav-item" id="nav-history" onclick="showPage('history')">
       <div class="nav-icon">≡</div>
       <div class="nav-label">History</div>
+    </div>
+    <div class="nav-item" id="nav-coach" onclick="showPage('coach')">
+      <div class="nav-icon">💡</div>
+      <div class="nav-label">Coach</div>
     </div>
   </nav>
 
@@ -1816,6 +1830,8 @@ function startMidnightScheduler() {
     if (S.today.date !== todayStr()) {
       if (S.today.score !== null) {
         S.dailyScores.push({ date: S.today.date, score: S.today.score });
+        if (S.today.score >= 70) S.streak = (S.streak || 0) + 1;
+        else S.streak = 0;
       }
       const fresh = defaultState().today;
       fresh.date = todayStr();
@@ -1886,6 +1902,7 @@ function renderAll() {
   renderActivity();
   renderBody();
   renderHistory();
+  renderCoach();
 }
 
 function renderHeader() {
@@ -1893,6 +1910,7 @@ function renderHeader() {
 }
 
 function renderDashboard() {
+  autoScore();
   const { calories, protein, steps, workoutDone, workoutType, workoutDuration, score, breakdown } = S.today;
 
   // Has anything been logged today?
@@ -1927,7 +1945,13 @@ function renderDashboard() {
     const offset = circumference - (score / 100) * circumference;
     document.getElementById('scoreRingCircle').style.strokeDashoffset = offset;
     document.getElementById('scoreNumDisplay').textContent = score;
-    const grade = score >= 90 ? 'Excellent' : score >= 75 ? 'Great' : score >= 60 ? 'Good' : score >= 45 ? 'Fair' : 'Needs Work';
+    const h = new Date().getHours();
+    let grade;
+    if (score >= 90) grade = 'Excellent';
+    else if (score >= 75) grade = 'Great';
+    else if (score >= 60) grade = 'Good';
+    else if (score >= 45) grade = h >= 17 ? 'Fair' : 'In Progress';
+    else grade = h >= 17 ? 'Needs Work' : 'Building Up';
     document.getElementById('scoreTitle').textContent = grade + ' Day';
     document.getElementById('scoreSub').textContent = getScoreMessage(score);
   } else {
@@ -2034,11 +2058,23 @@ function renderDashboard() {
 }
 
 function getScoreMessage(score) {
+  const h = new Date().getHours();
+  if (h < 12) {
+    if (score >= 60) return 'Great start to the morning — keep it going!';
+    if (score >= 30) return 'Day is just beginning. Log meals and steps to build your score.';
+    return 'Morning energy — start logging to see your score grow.';
+  }
+  if (h < 17) {
+    if (score >= 75) return 'Excellent progress. Finish strong this afternoon.';
+    if (score >= 60) return 'Solid halfway point. Hit protein and steps to push higher.';
+    if (score >= 40) return 'Pick it up — a meal and a walk will boost you.';
+    return 'Still plenty of day left. Log your meals and get moving.';
+  }
   if (score >= 90) return 'Outstanding! Protein, activity and nutrition all dialled in.';
   if (score >= 75) return 'Strong day. Keep this consistency going!';
-  if (score >= 60) return 'Good progress. Small tweaks will push you higher.';
+  if (score >= 60) return 'Good progress. Small tweaks will push you higher tomorrow.';
   if (score >= 45) return 'Room to improve. Focus on protein and steps tomorrow.';
-  return 'Tough day — that\'s okay. Reset and go again.';
+  return 'Tough day — that\'s okay. Reset and go again tomorrow.';
 }
 
 function getInsights() {
@@ -2782,6 +2818,146 @@ function renderHistory() {
   renderThemeButtons();
 }
 
+// ─── COACH INSIGHTS ───
+function renderCoach() {
+  const el = document.getElementById('coachContent');
+  if (!el) return;
+
+  const recent7 = S.dailyScores.slice(-7);
+  const avgScore = recent7.length
+    ? Math.round(recent7.reduce((s, d) => s + d.score, 0) / recent7.length)
+    : null;
+  const trend = recent7.length >= 2
+    ? recent7[recent7.length - 1].score - recent7[0].score
+    : 0;
+
+  const t = S.today;
+  const proteinPct = S.settings.proteinTarget ? Math.round(t.protein / S.settings.proteinTarget * 100) : 0;
+  const caloriePct = S.settings.calorieTarget ? Math.round(t.calories / S.settings.calorieTarget * 100) : 0;
+  const stepsPct   = S.settings.stepsTarget   ? Math.round(t.steps   / S.settings.stepsTarget   * 100) : 0;
+
+  const bm = S.bodyMetrics || [];
+  const latestWeight  = bm.length ? bm[bm.length - 1].weight : null;
+  const prevWeight    = bm.length >= 2 ? bm[bm.length - 2].weight : null;
+  const weightDelta   = (latestWeight && prevWeight) ? (latestWeight - prevWeight).toFixed(1) : null;
+
+  // Score bar chart (7-day)
+  const scoreBar = recent7.map(d => {
+    const col = d.score >= 75 ? '#c8ff00' : d.score >= 50 ? '#ffd700' : '#ff6b35';
+    const barH = Math.max(4, Math.round(d.score * 0.44));
+    const day  = d.date.split(' ')[0];
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+      <div style="font-size:9px;color:var(--text3)">${d.score}</div>
+      <div style="width:100%;height:${barH}px;background:${col};border-radius:3px 3px 0 0"></div>
+      <div style="font-size:8px;color:var(--text3)">${day}</div>
+    </div>`;
+  }).join('');
+
+  // Recommendations
+  const h = new Date().getHours();
+  const recs = [];
+  if (t.protein < S.settings.proteinTarget * 0.75)
+    recs.push({ icon: '🥩', text: `Protein at ${t.protein}g — add a shake, eggs, or chicken to hit ${S.settings.proteinTarget}g.`, pri: 'high' });
+  if (t.steps < S.settings.stepsTarget * 0.5 && h > 12)
+    recs.push({ icon: '🚶', text: `${t.steps.toLocaleString()} steps so far — a 20-min walk adds ~2,000 more.`, pri: 'med' });
+  if (!t.workoutDone && h > 14)
+    recs.push({ icon: '💪', text: 'No workout logged yet. Even 20 minutes of movement counts.', pri: 'low' });
+  if (t.meals.length < 3 && h > 14)
+    recs.push({ icon: '🍽️', text: `Only ${t.meals.length} meal${t.meals.length !== 1 ? 's' : ''} logged — consistent eating supports muscle retention.`, pri: 'med' });
+  if (S.streak >= 7)
+    recs.push({ icon: '🔥', text: `${S.streak}-day streak! You're building a real long-term habit.`, pri: 'good' });
+  if (avgScore !== null && avgScore >= 75)
+    recs.push({ icon: '📈', text: `7-day average score ${avgScore} — consistently strong week.`, pri: 'good' });
+  if (recs.length === 0)
+    recs.push({ icon: '✅', text: 'All targets on track — great discipline today!', pri: 'good' });
+
+  const priColor = { high: 'var(--red)', med: 'var(--accent3)', low: 'var(--text2)', good: 'var(--accent)' };
+
+  el.innerHTML = `
+    <div style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:2px">Coach Insights</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:16px">Your progress snapshot</div>
+
+    ${recent7.length > 0 ? `
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-label">7-Day Score Trend</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:56px;margin-bottom:10px">${scoreBar}</div>
+      <div style="display:flex;justify-content:space-between">
+        <div>
+          <div style="font-size:24px;font-weight:800;color:${avgScore >= 75 ? 'var(--accent)' : avgScore >= 55 ? 'var(--yellow)' : 'var(--red)'}">${avgScore}</div>
+          <div style="font-size:9px;color:var(--text3)">avg / 100</div>
+        </div>
+        ${recent7.length >= 2 ? `<div style="text-align:right">
+          <div style="font-size:18px;font-weight:700;color:${trend >= 0 ? 'var(--accent2)' : 'var(--red)'}">${trend >= 0 ? '↑' : '↓'} ${Math.abs(trend)} pts</div>
+          <div style="font-size:9px;color:var(--text3)">week change</div>
+        </div>` : ''}
+      </div>
+    </div>` : `
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">Score history appears here after your first full day</div>
+    </div>`}
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-label">Today's Nutrition & Activity</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="text-align:center">
+          <div style="font-size:20px;font-weight:800;color:${proteinPct >= 80 ? 'var(--accent)' : proteinPct >= 50 ? 'var(--yellow)' : 'var(--red)'}">${proteinPct}%</div>
+          <div style="font-size:9px;color:var(--text3)">Protein</div>
+          <div style="font-size:9px;color:var(--text2)">${t.protein}g / ${S.settings.proteinTarget}g</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:20px;font-weight:800;color:${caloriePct >= 80 && caloriePct <= 120 ? 'var(--accent)' : 'var(--yellow)'}">${caloriePct}%</div>
+          <div style="font-size:9px;color:var(--text3)">Calories</div>
+          <div style="font-size:9px;color:var(--text2)">${t.calories} / ${S.settings.calorieTarget}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:20px;font-weight:800;color:${stepsPct >= 80 ? 'var(--accent)' : stepsPct >= 50 ? 'var(--yellow)' : 'var(--red)'}">${stepsPct}%</div>
+          <div style="font-size:9px;color:var(--text3)">Steps</div>
+          <div style="font-size:9px;color:var(--text2)">${t.steps.toLocaleString()} / ${S.settings.stepsTarget.toLocaleString()}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--accent3)">${S.streak}</div>
+          <div style="font-size:9px;color:var(--text3)">day streak</div>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:${t.workoutDone && t.workoutType !== 'none' ? 'var(--accent2)' : 'var(--text3)'}">${t.workoutDone && t.workoutType !== 'none' ? '✓' : '—'}</div>
+          <div style="font-size:9px;color:var(--text3)">workout</div>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--text)">${t.meals.length}</div>
+          <div style="font-size:9px;color:var(--text3)">meals</div>
+        </div>
+      </div>
+    </div>
+
+    ${bm.length > 0 ? `
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-label">Body Composition</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:24px;font-weight:800;color:var(--text)">${latestWeight ? latestWeight + ' kg' : '—'}</div>
+          <div style="font-size:10px;color:var(--text3)">current weight</div>
+        </div>
+        ${weightDelta !== null ? `<div style="text-align:right">
+          <div style="font-size:18px;font-weight:700;color:${parseFloat(weightDelta) < 0 ? 'var(--accent2)' : parseFloat(weightDelta) > 0.2 ? 'var(--yellow)' : 'var(--text2)'}">${parseFloat(weightDelta) > 0 ? '+' : ''}${weightDelta} kg</div>
+          <div style="font-size:9px;color:var(--text3)">vs last entry</div>
+        </div>` : ''}
+      </div>
+      ${bm[bm.length-1].fat ? `<div style="margin-top:8px;font-size:11px;color:var(--text2)">Body fat: <strong>${bm[bm.length-1].fat}%</strong>${bm[bm.length-1].muscle ? ` &nbsp;·&nbsp; Muscle: <strong>${bm[bm.length-1].muscle}%</strong>` : ''}</div>` : ''}
+    </div>` : ''}
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-label">Recommendations</div>
+      ${recs.map(r => `
+      <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:20px;line-height:1.2;flex-shrink:0">${r.icon}</div>
+        <div style="font-size:11px;color:${priColor[r.pri]};line-height:1.5">${r.text}</div>
+      </div>`).join('')}
+    </div>
+  `;
+}
+
 // ─── THEME ───
 function setTheme(mode) {
   document.body.classList.remove('theme-light','theme-auto','theme-lively');
@@ -3421,17 +3597,12 @@ function saveBodyMetrics() {
   showToast('Body metrics saved');
 }
 
-function scoreDay() {
+function autoScore() {
   const t = S.today;
-
-  // Don't score if nothing has been logged today
   const hasData = t.meals.length > 0 || t.steps > 0 || t.workoutDone || t.activityCals > 0;
-  if (!hasData) {
-    showToast('Log some meals or activity first!');
-    return;
-  }
+  if (!hasData) return;
 
-  // Protein (30) — 0 if nothing logged
+  // Protein (30)
   let protein = 0;
   if (t.protein >= 100) protein = 30;
   else if (t.protein >= 80) protein = 25;
@@ -3439,7 +3610,7 @@ function scoreDay() {
   else if (t.protein >= 40) protein = 12;
   else if (t.protein > 0)   protein = 6;
 
-  // Calories (20) — 0 if nothing logged
+  // Calories (20)
   let calories = 0;
   if (t.calories >= 1800 && t.calories <= 2200) calories = 20;
   else if (t.calories >= 1600 && t.calories < 1800) calories = 15;
@@ -3454,13 +3625,13 @@ function scoreDay() {
   else if (t.meals.length >= 2) quality = 7;
   else if (t.meals.length >= 1) quality = 4;
 
-  // Consistency (10) — streak bonus, only if they logged something
+  // Consistency (10)
   let consistency = 0;
   if (t.meals.length > 0 || t.steps > 0) {
     consistency = S.streak >= 3 ? 10 : S.streak >= 1 ? 7 : 5;
   }
 
-  // Activity (15) — 0 if no steps
+  // Activity (15)
   let activity = 0;
   if (t.steps >= 8000)      activity = 15;
   else if (t.steps >= 4000) activity = 10;
@@ -3472,25 +3643,15 @@ function scoreDay() {
   if (t.workoutDone && t.workoutType !== 'none') workout = 10;
 
   const total = protein + calories + quality + consistency + activity + workout;
+  if (S.today.score === total) return;
+
   S.today.score = total;
   S.today.breakdown = { protein, calories, quality, consistency, activity, workout };
   S.today.scored = true;
 
-  // Streak — only counts if score >= 70
-  if (total >= 70) {
-    S.streak = (S.streak || 0) + 1;
-  } else {
-    S.streak = 0;
-  }
-
-  // Archive today's score
   const existing = S.dailyScores.findIndex(d => d.date === todayStr());
   if (existing >= 0) S.dailyScores[existing].score = total;
-
   save(S);
-  renderAll();
-  showPage('dashboard');
-  showToast(`Score: ${total}/100`);
 }
 
 function confirmNewDay() {
@@ -3498,6 +3659,8 @@ function confirmNewDay() {
     if (S.today.score !== null) {
       const existing = S.dailyScores.findIndex(d => d.date === S.today.date);
       if (existing < 0) S.dailyScores.push({ date: S.today.date, score: S.today.score });
+      if (S.today.score >= 70) S.streak = (S.streak || 0) + 1;
+      else S.streak = 0;
     }
     const fresh = defaultState().today;
     fresh.date = todayStr();
@@ -4418,13 +4581,25 @@ applyStoredTheme();
 checkOAuthRedirect();   // must run AFTER showToast is defined
 startMidnightScheduler(); // must run AFTER showToast is defined
 
-// Auto-sync Google Fit on every app load when token is valid
+// Auto-sync Google Fit on every app load; silent re-auth if token expired
 (function autoSyncGfit() {
   const token  = S.settings && S.settings.gfitToken;
   const expiry = S.settings && S.settings.gfitTokenExpiry;
-  if (token && expiry && Date.now() < expiry) {
-    setTimeout(() => syncGoogleFit(token), 2000);
+  if (token && expiry) {
+    if (Date.now() < expiry) {
+      setTimeout(() => syncGoogleFit(token), 2000);
+    } else {
+      // Token expired — try silent re-auth
+      const clientId = GFIT_HARDCODED_ID || (S.settings && S.settings.gfitClientId);
+      if (clientId) setTimeout(() => launchGfitOAuth(clientId, true), 1500);
+    }
   }
+  // Periodic 30-min background sync while app is open
+  setInterval(() => {
+    const tk = S.settings && S.settings.gfitToken;
+    const ex = S.settings && S.settings.gfitTokenExpiry;
+    if (tk && ex && Date.now() < ex) syncGoogleFit(tk);
+  }, 30 * 60 * 1000);
 })();
 
 if ('serviceWorker' in navigator) {
