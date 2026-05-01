@@ -3417,8 +3417,8 @@ function connectGoogleFit() {
   }
 
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (isMobile) {
-    // On mobile/WebView use a hidden iframe for silent refresh so the main page never navigates away
+  if (isMobile && expired) {
+    // Expired token on mobile — silent iframe refresh avoids navigating the WebView away
     showToast('Refreshing Google session...');
     silentRefreshGfitIframe(clientId)
       .then(({ token: newToken, expiresIn }) => {
@@ -3431,15 +3431,15 @@ function connectGoogleFit() {
         syncGoogleFit(newToken);
       })
       .catch(() => {
-        // Silent failed (Google session fully expired) — must do interactive sign-in
-        showToast('Session expired — signing in again...');
+        // Google session also expired — must do full interactive sign-in
+        showToast('Please sign in with Google again...');
         launchGfitOAuth(clientId, false);
       });
     return;
   }
 
-  // Desktop: try silent popup first
-  launchGfitOAuth(clientId, true);
+  // First-time sign-in on mobile, or desktop: go straight to interactive OAuth
+  launchGfitOAuth(clientId, false);
 }
 
 function silentRefreshGfitIframe(clientId) {
@@ -3469,6 +3469,7 @@ function silentRefreshGfitIframe(clientId) {
     const cleanup = () => {
       settled = true;
       sessionStorage.removeItem('gfit_state');
+      window.removeEventListener('message', onMessage);
       try { iframe.remove(); } catch(e) {}
     };
 
@@ -3476,30 +3477,26 @@ function silentRefreshGfitIframe(clientId) {
       if (!settled) { cleanup(); reject(new Error('timeout')); }
     }, 15000);
 
-    iframe.onload = () => {
-      if (settled) return;
-      try {
-        const loc    = iframe.contentWindow.location;
-        const hash   = loc.hash   || '';
-        const search = loc.search || '';
-        if (hash.includes('access_token')) {
-          const p     = new URLSearchParams(hash.substring(1));
-          const token = p.get('access_token');
-          if (token && p.get('state') === state) {
-            clearTimeout(timer);
-            cleanup();
-            resolve({ token, expiresIn: parseInt(p.get('expires_in') || '3600') });
-          }
-        } else if (search.includes('error=')) {
-          clearTimeout(timer);
+    // checkOAuthRedirect() inside the iframe detects iframe context and postMessages the result
+    const onMessage = (e) => {
+      if (settled || e.origin !== window.location.origin) return;
+      if (!e.data || e.data.type !== 'gfit_oauth') return;
+      clearTimeout(timer);
+      const h = e.data.hash || '';
+      const s = e.data.search || '';
+      if (h.includes('access_token')) {
+        const p     = new URLSearchParams(h.substring(1));
+        const token = p.get('access_token');
+        if (token && p.get('state') === state) {
           cleanup();
-          reject(new Error('interaction_required'));
+          resolve({ token, expiresIn: parseInt(p.get('expires_in') || '3600') });
+          return;
         }
-        // else: intermediate page load (e.g. Google CORS redirect) — wait for next load
-      } catch(e) {
-        // cross-origin (Google's servers) — ignore, wait for redirect back to our origin
       }
+      cleanup();
+      reject(new Error('interaction_required'));
     };
+    window.addEventListener('message', onMessage);
 
     iframe.src = authUrl;
   });
@@ -3696,6 +3693,12 @@ function launchGfitOAuth(clientId, silent = false) {
 function checkOAuthRedirect() {
   const hash   = window.location.hash;
   const search = window.location.search;
+
+  // If loaded inside a hidden iframe (silent refresh), relay result to parent and stop
+  if (window.parent !== window && (hash.includes('access_token') || search.includes('error='))) {
+    try { window.parent.postMessage({ type: 'gfit_oauth', hash, search }, window.location.origin); } catch(e) {}
+    return;
+  }
 
   // Check for OAuth error (e.g. interaction_required from a silent prompt=none attempt)
   if (search.includes('error=')) {
@@ -4997,9 +5000,22 @@ initProfileCheck();     // show onboarding on first install
     if (Date.now() < expiry) {
       setTimeout(() => syncGoogleFit(token), 2000);
     } else {
-      // Token expired — try silent re-auth
+      // Token expired — silent re-auth via iframe on mobile, popup on desktop
       const clientId = GFIT_HARDCODED_ID || (S.settings && S.settings.gfitClientId);
-      if (clientId) setTimeout(() => launchGfitOAuth(clientId, true), 1500);
+      if (clientId) {
+        const mob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (mob) {
+          setTimeout(() => silentRefreshGfitIframe(clientId).then(({ token: t, expiresIn: ex }) => {
+            if (!S.settings) S.settings = defaultState().settings;
+            S.settings.gfitToken = t;
+            S.settings.gfitTokenExpiry = Date.now() + ex * 1000;
+            save(S);
+            syncGoogleFit(t);
+          }).catch(() => {}), 1500);
+        } else {
+          setTimeout(() => launchGfitOAuth(clientId, true), 1500);
+        }
+      }
     }
   }
   // Periodic 30-min background sync while app is open
