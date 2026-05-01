@@ -1577,6 +1577,45 @@
     <!-- ======================== HISTORY ======================== -->
     <div id="tab-history" class="page">
 
+      <!-- Profile card -->
+      <div class="section-title">Profile <span>you</span></div>
+      <div class="card" style="margin-bottom:12px">
+        <div id="profileSummary" style="margin-bottom:8px"></div>
+        <div id="profileEditForm" style="display:none;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input id="pf-name" type="text" placeholder="Name" class="input-field" style="flex:2;font-size:11px"/>
+            <input id="pf-age" type="number" placeholder="Age" class="input-field" style="flex:1;font-size:11px" min="10" max="100"/>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button id="pf-male" class="btn btn-secondary" style="flex:1;font-size:11px" onclick="pfSelectGender('male')">♂ Male</button>
+            <button id="pf-female" class="btn btn-secondary" style="flex:1;font-size:11px" onclick="pfSelectGender('female')">♀ Female</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <input id="pf-height" type="number" placeholder="Height (cm)" class="input-field" style="flex:1;font-size:11px" min="100" max="250"/>
+            <input id="pf-weight" type="number" placeholder="Weight (kg)" class="input-field" style="flex:1;font-size:11px" min="30" max="300" step="0.1"/>
+            <input id="pf-goal" type="number" placeholder="Goal (kg)" class="input-field" style="flex:1;font-size:11px" min="30" max="300" step="0.1"/>
+          </div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:9px;color:var(--text3);margin-bottom:5px">Activity Level</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="btn btn-secondary pf-act" data-act="sedentary" onclick="pfSelectActivity('sedentary')" style="font-size:9px;padding:5px 8px">🪑 Sedentary</button>
+              <button class="btn btn-secondary pf-act" data-act="light" onclick="pfSelectActivity('light')" style="font-size:9px;padding:5px 8px">🚶 Light</button>
+              <button class="btn btn-secondary pf-act pf-act-sel" data-act="moderate" onclick="pfSelectActivity('moderate')" style="font-size:9px;padding:5px 8px">🏃 Moderate</button>
+              <button class="btn btn-secondary pf-act" data-act="active" onclick="pfSelectActivity('active')" style="font-size:9px;padding:5px 8px">💪 Active</button>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;font-size:12px" onclick="saveProfile(false)">Save &amp; Recalculate Targets</button>
+        </div>
+        <button id="profileEditBtn" class="btn btn-secondary" style="width:100%;margin-top:8px;font-size:11px" onclick="toggleProfileEdit()">✏️ Edit Profile</button>
+      </div>
+
+      <!-- Computed targets card -->
+      <div class="card" id="targetsCard" style="margin-bottom:12px;display:none">
+        <div class="card-label">Daily Targets <span style="font-size:8px;color:var(--accent2);margin-left:4px">calculated from profile</span></div>
+        <div id="targetsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"></div>
+        <div style="font-size:9px;color:var(--text3);margin-top:8px;line-height:1.5" id="targetsNote"></div>
+      </div>
+
       <div class="section-title">Score History <span>daily_scores</span></div>
 
       <div class="card" id="historyList">
@@ -1725,6 +1764,62 @@
   </nav>
 
   <div class="toast" id="toast"></div>
+
+  <!-- ONBOARDING OVERLAY (shown on first install) -->
+  <div id="onboardingOverlay" style="display:none;position:fixed;inset:0;background:#080c12;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px 60px">
+    <div style="max-width:420px;margin:0 auto">
+      <div style="font-size:26px;font-weight:800;color:var(--accent);margin:24px 0 4px">Welcome to VitalCore</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:24px">Set up your profile so we can personalise your calorie, protein and macro targets.</div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-label">Your Name</div>
+        <input id="ob-name" type="text" placeholder="What should we call you?" class="input-field" style="width:100%;margin-top:6px"/>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-label">Age &amp; Gender</div>
+        <div style="display:flex;gap:10px;margin-top:8px;align-items:center">
+          <input id="ob-age" type="number" placeholder="Age" class="input-field" style="width:80px" min="10" max="100"/>
+          <div style="display:flex;gap:6px;flex:1">
+            <button id="ob-male" class="btn btn-secondary" style="flex:1;font-size:11px;padding:10px 4px" onclick="obSelectGender('male')">♂ Male</button>
+            <button id="ob-female" class="btn btn-secondary" style="flex:1;font-size:11px;padding:10px 4px" onclick="obSelectGender('female')">♀ Female</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-label">Height &amp; Weight</div>
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <div style="flex:1">
+            <input id="ob-height" type="number" placeholder="Height" class="input-field" style="width:100%" min="100" max="250"/>
+            <div style="font-size:9px;color:var(--text3);margin-top:3px">cm &nbsp;(e.g. 175)</div>
+          </div>
+          <div style="flex:1">
+            <input id="ob-weight" type="number" placeholder="Weight" class="input-field" style="width:100%" min="30" max="300" step="0.1"/>
+            <div style="font-size:9px;color:var(--text3);margin-top:3px">kg &nbsp;(e.g. 72.5)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-label">Goal Weight <span style="color:var(--text3);font-size:9px">(optional)</span></div>
+        <input id="ob-goal" type="number" placeholder="Target weight in kg — skip if maintaining current weight" class="input-field" style="width:100%;margin-top:6px" min="30" max="300" step="0.1"/>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-label">Activity Level</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+          <button class="btn btn-secondary ob-act" data-act="sedentary" onclick="obSelectActivity('sedentary')" style="font-size:10px;padding:10px 6px;text-align:left;line-height:1.4">🪑 Sedentary<br/><span style="color:var(--text3);font-size:8px">Desk job, little exercise</span></button>
+          <button class="btn btn-secondary ob-act" data-act="light" onclick="obSelectActivity('light')" style="font-size:10px;padding:10px 6px;text-align:left;line-height:1.4">🚶 Light<br/><span style="color:var(--text3);font-size:8px">1–3 days/week</span></button>
+          <button class="btn btn-secondary ob-act ob-act-sel" data-act="moderate" onclick="obSelectActivity('moderate')" style="font-size:10px;padding:10px 6px;text-align:left;line-height:1.4">🏃 Moderate<br/><span style="color:var(--text3);font-size:8px">3–5 days/week</span></button>
+          <button class="btn btn-secondary ob-act" data-act="active" onclick="obSelectActivity('active')" style="font-size:10px;padding:10px 6px;text-align:left;line-height:1.4">💪 Very Active<br/><span style="color:var(--text3);font-size:8px">6–7 days/week</span></button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;padding:16px;font-size:15px;font-weight:700" onclick="saveProfile(true)">Calculate My Targets →</button>
+      <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:10px">You can edit your profile anytime in the History tab</div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1796,7 +1891,11 @@ function defaultState() {
     dailyScores: [],
     bodyMetrics: [],
     lastBodyMetrics: {},
-    settings: { proteinTarget: 105, calorieTarget: 2000, stepsTarget: 7000 }
+    settings: {
+      proteinTarget: 105, calorieTarget: 2000, stepsTarget: 7000,
+      fatTarget: 60, carbTarget: 200,
+      profile: { name: '', age: null, gender: null, height: null, weight: null, goalWeight: null, activityLevel: 'moderate' }
+    }
   };
 }
 
@@ -1902,6 +2001,7 @@ function renderAll() {
   renderActivity();
   renderBody();
   renderHistory();
+  renderProfile();
   renderCoach();
 }
 
@@ -2818,6 +2918,225 @@ function renderHistory() {
   renderThemeButtons();
 }
 
+// ─── PROFILE & TARGETS ───
+
+let _obGender   = null;   // onboarding state (not persisted until save)
+let _obActivity = 'moderate';
+let _pfGender   = null;   // profile edit form state
+
+function obSelectGender(g) {
+  _obGender = g;
+  document.getElementById('ob-male').style.borderColor  = g === 'male'   ? 'var(--accent)' : '';
+  document.getElementById('ob-female').style.borderColor = g === 'female' ? 'var(--accent)' : '';
+}
+function obSelectActivity(a) {
+  _obActivity = a;
+  document.querySelectorAll('.ob-act').forEach(b => {
+    b.style.borderColor = b.dataset.act === a ? 'var(--accent)' : '';
+    b.style.color       = b.dataset.act === a ? 'var(--accent)' : '';
+  });
+}
+function pfSelectGender(g) {
+  _pfGender = g;
+  document.getElementById('pf-male').style.borderColor  = g === 'male'   ? 'var(--accent)' : '';
+  document.getElementById('pf-female').style.borderColor = g === 'female' ? 'var(--accent)' : '';
+}
+function pfSelectActivity(a) {
+  document.querySelectorAll('.pf-act').forEach(b => {
+    b.style.borderColor = b.dataset.act === a ? 'var(--accent)' : '';
+    b.style.color       = b.dataset.act === a ? 'var(--accent)' : '';
+    if (b.dataset.act === a) b.dataset.selected = '1'; else delete b.dataset.selected;
+  });
+}
+function getSelectedPfActivity() {
+  const sel = document.querySelector('.pf-act[data-selected="1"]');
+  return sel ? sel.dataset.act : 'moderate';
+}
+
+function recalculateTargets() {
+  const p = S.settings && S.settings.profile;
+  if (!p || !p.age || !p.gender || !p.height || !p.weight) return;
+
+  // Mifflin-St Jeor BMR
+  const bmr = p.gender === 'male'
+    ? 10 * p.weight + 6.25 * p.height - 5 * p.age + 5
+    : 10 * p.weight + 6.25 * p.height - 5 * p.age - 161;
+
+  const mult = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725 };
+  const tdee = Math.round(bmr * (mult[p.activityLevel] || 1.55));
+
+  // Calorie target: deficit / surplus based on goal
+  const diff = (p.goalWeight && p.goalWeight < p.weight - 1) ? -400
+             : (p.goalWeight && p.goalWeight > p.weight + 1) ? 250
+             : 0;
+  const calTarget = Math.max(1200, Math.min(3500, tdee + diff));
+
+  // Protein: 1.8g per kg body weight (use lighter of current vs goal for cutting)
+  const refW = (p.goalWeight && p.goalWeight < p.weight) ? p.goalWeight : p.weight;
+  const protTarget = Math.round(refW * 1.8);
+
+  // Fat: ~28% of calories, min 0.6g/kg
+  const fatTarget  = Math.max(Math.round(p.weight * 0.6), Math.round(calTarget * 0.28 / 9));
+
+  // Carbs: remaining after protein and fat
+  const carbTarget = Math.max(50, Math.round((calTarget - protTarget * 4 - fatTarget * 9) / 4));
+
+  if (!S.settings) S.settings = defaultState().settings;
+  S.settings.calorieTarget = calTarget;
+  S.settings.proteinTarget = Math.max(60, Math.min(250, protTarget));
+  S.settings.fatTarget     = fatTarget;
+  S.settings.carbTarget    = carbTarget;
+  save(S);
+  return { bmr: Math.round(bmr), tdee, calTarget, protTarget, fatTarget, carbTarget, diff };
+}
+
+function saveProfile(isOnboarding) {
+  if (!S.settings) S.settings = defaultState().settings;
+  if (!S.settings.profile) S.settings.profile = defaultState().settings.profile;
+  const p = S.settings.profile;
+
+  if (isOnboarding) {
+    const name   = (document.getElementById('ob-name')?.value   || '').trim();
+    const age    = parseFloat(document.getElementById('ob-age')?.value);
+    const height = parseFloat(document.getElementById('ob-height')?.value);
+    const weight = parseFloat(document.getElementById('ob-weight')?.value);
+    const goal   = parseFloat(document.getElementById('ob-goal')?.value) || null;
+
+    if (!name)                   { showToast('Please enter your name');   return; }
+    if (!age || age < 10)        { showToast('Please enter a valid age'); return; }
+    if (!_obGender)              { showToast('Please select Male or Female'); return; }
+    if (!height || height < 100) { showToast('Please enter your height (cm)'); return; }
+    if (!weight || weight < 30)  { showToast('Please enter your weight (kg)'); return; }
+
+    p.name = name; p.age = age; p.gender = _obGender;
+    p.height = height; p.weight = weight;
+    p.goalWeight = goal; p.activityLevel = _obActivity;
+
+    document.getElementById('onboardingOverlay').style.display = 'none';
+  } else {
+    const name   = (document.getElementById('pf-name')?.value   || '').trim();
+    const age    = parseFloat(document.getElementById('pf-age')?.value);
+    const height = parseFloat(document.getElementById('pf-height')?.value);
+    const weight = parseFloat(document.getElementById('pf-weight')?.value);
+    const goal   = parseFloat(document.getElementById('pf-goal')?.value) || null;
+
+    if (!name || !age || !height || !weight) { showToast('Fill in all required fields'); return; }
+    if (!_pfGender && !p.gender)             { showToast('Please select gender'); return; }
+
+    p.name = name; p.age = age;
+    p.gender = _pfGender || p.gender;
+    p.height = height; p.weight = weight;
+    p.goalWeight = goal; p.activityLevel = getSelectedPfActivity();
+    document.getElementById('profileEditForm').style.display = 'none';
+    document.getElementById('profileEditBtn').textContent = '✏️ Edit Profile';
+  }
+
+  save(S);
+  const t = recalculateTargets();
+  renderAll();
+  if (isOnboarding) {
+    showToast(`Welcome ${p.name}! Targets set ✓`);
+  } else {
+    showToast(`Profile saved — ${t ? t.calTarget + ' kcal target set' : 'targets updated'}`);
+  }
+}
+
+function toggleProfileEdit() {
+  const form = document.getElementById('profileEditForm');
+  const btn  = document.getElementById('profileEditBtn');
+  if (form.style.display === 'none') {
+    // Pre-fill form with current profile
+    const p = S.settings.profile || {};
+    document.getElementById('pf-name').value   = p.name   || '';
+    document.getElementById('pf-age').value    = p.age    || '';
+    document.getElementById('pf-height').value = p.height || '';
+    document.getElementById('pf-weight').value = p.weight || '';
+    document.getElementById('pf-goal').value   = p.goalWeight || '';
+    _pfGender = p.gender || null;
+    pfSelectGender(p.gender || 'male');
+    pfSelectActivity(p.activityLevel || 'moderate');
+    form.style.display = 'block';
+    btn.textContent = '✕ Cancel';
+  } else {
+    form.style.display = 'none';
+    btn.textContent = '✏️ Edit Profile';
+  }
+}
+
+function renderProfile() {
+  const el = document.getElementById('profileSummary');
+  if (!el) return;
+  const p = (S.settings && S.settings.profile) || {};
+
+  if (!p.name && !p.age) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:4px 0">No profile set — tap Edit to add your details and get personalised targets.</div>';
+    const tc = document.getElementById('targetsCard');
+    if (tc) tc.style.display = 'none';
+    return;
+  }
+
+  const goalLine = p.goalWeight
+    ? (p.goalWeight < p.weight  ? `→ ${p.goalWeight} kg <span style="color:var(--accent2)">(-${(p.weight - p.goalWeight).toFixed(1)} kg)</span>`
+      : p.goalWeight > p.weight ? `→ ${p.goalWeight} kg <span style="color:var(--accent3)">(+${(p.goalWeight - p.weight).toFixed(1)} kg)</span>`
+      : `→ Maintaining ${p.goalWeight} kg`)
+    : 'Maintaining current weight';
+
+  const actLabel = { sedentary: 'Sedentary', light: 'Lightly Active', moderate: 'Moderately Active', active: 'Very Active' };
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:32px;width:44px;height:44px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center">${p.gender === 'female' ? '👩' : '🧑'}</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--text)">${p.name || '—'}</div>
+        <div style="font-size:10px;color:var(--text3)">${p.age ? p.age + ' yrs' : ''} ${p.gender ? '· ' + p.gender : ''} ${p.height ? '· ' + p.height + ' cm' : ''}</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px">${p.weight ? p.weight + ' kg current &nbsp;' : ''}${goalLine}</div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--text3);margin-top:8px">${actLabel[p.activityLevel] || 'Moderate activity'}</div>
+  `;
+
+  // Show targets card
+  const tc = document.getElementById('targetsCard');
+  const tg = document.getElementById('targetsGrid');
+  const tn = document.getElementById('targetsNote');
+  if (!tc || !tg || !S.settings) return;
+  tc.style.display = 'block';
+
+  const items = [
+    { label: 'Calories',  val: S.settings.calorieTarget, unit: ' kcal', col: 'var(--accent)' },
+    { label: 'Protein',   val: S.settings.proteinTarget,  unit: ' g',   col: 'var(--accent2)' },
+    { label: 'Fat',       val: S.settings.fatTarget || '—', unit: S.settings.fatTarget ? ' g' : '', col: 'var(--yellow)' },
+    { label: 'Carbs',     val: S.settings.carbTarget || '—', unit: S.settings.carbTarget ? ' g' : '', col: 'var(--accent3)' },
+    { label: 'Steps',     val: S.settings.stepsTarget?.toLocaleString(), unit: '', col: 'var(--text2)' },
+    { label: 'Activity',  val: actLabel[p.activityLevel] || 'Moderate', unit: '', col: 'var(--text3)' },
+  ];
+  tg.innerHTML = items.map(i => `
+    <div style="background:var(--surface2);border-radius:8px;padding:8px 10px">
+      <div style="font-size:15px;font-weight:800;color:${i.col}">${i.val}${i.unit}</div>
+      <div style="font-size:9px;color:var(--text3)">${i.label}</div>
+    </div>`).join('');
+
+  if (p.goalWeight && tn) {
+    const mode = p.goalWeight < p.weight - 1 ? '400 kcal deficit (fat loss)'
+               : p.goalWeight > p.weight + 1  ? '250 kcal surplus (muscle gain)'
+               : 'maintenance calories';
+    tn.textContent = `Targets are based on your BMR + activity level with ${mode}. Protein is set at 1.8 g/kg for muscle retention.`;
+  } else if (tn) {
+    tn.textContent = 'Targets are based on your BMR and activity level for maintenance. Set a goal weight for a cut or bulk plan.';
+  }
+}
+
+function initProfileCheck() {
+  const p = S.settings && S.settings.profile;
+  const hasProfile = p && p.name && p.age && p.gender && p.height && p.weight;
+  if (hasProfile) return;
+  // Only force onboarding on a fresh install (no data yet)
+  const isFresh = S.dailyScores.length === 0 && S.today.meals.length === 0 && S.bodyMetrics.length === 0;
+  if (isFresh) {
+    document.getElementById('onboardingOverlay').style.display = 'block';
+  }
+}
+
 // ─── COACH INSIGHTS ───
 function renderCoach() {
   const el = document.getElementById('coachContent');
@@ -3207,19 +3526,6 @@ function gfitModalConnect() {
   setTimeout(() => launchGfitOAuth(id), 200);
 }
 
-function saveAndConnectGfit() {
-  const id = document.getElementById('gfitClientIdInline')?.value.trim();
-  if (!id || !id.includes('.apps.googleusercontent.com')) {
-    showToast('Paste your full Client ID ending in .apps.googleusercontent.com');
-    return;
-  }
-  if (!S.settings) S.settings = defaultState().settings;
-  S.settings.gfitClientId = id;
-  save(S);
-  showToast('Client ID saved — launching Google sign in...');
-  setTimeout(() => launchGfitOAuth(id), 300);
-}
-
 function launchGfitOAuth(clientId, silent = false) {
   // Build redirect URI — must exactly match what's registered in Google Console
   // Use the full URL including index.html to be explicit
@@ -3439,12 +3745,22 @@ async function syncGoogleFit(token) {
 
 // ─── EXPORT / IMPORT ───
 function exportData() {
-  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const json     = JSON.stringify(S, null, 2);
+  const filename = `vitalcore-backup-${todayStr().replace(/ /g,'-')}.json`;
+  // Android native bridge — avoids blob:// URL which WebView can't handle as a download
+  if (window.isNativeApp && typeof vitalCoreNative !== 'undefined' && vitalCoreNative.saveJsonFile) {
+    vitalCoreNative.saveJsonFile(filename, json);
+    return;
+  }
+  // Web / desktop fallback
+  const blob = new Blob([json], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `vitalcore-backup-${todayStr().replace(/ /g,'-')}.json`;
+  a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('Data exported ✓');
 }
@@ -4580,6 +4896,7 @@ renderAll();
 applyStoredTheme();
 checkOAuthRedirect();   // must run AFTER showToast is defined
 startMidnightScheduler(); // must run AFTER showToast is defined
+initProfileCheck();     // show onboarding on first install
 
 // Auto-sync Google Fit on every app load; silent re-auth if token expired
 (function autoSyncGfit() {
