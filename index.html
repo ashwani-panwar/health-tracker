@@ -3639,12 +3639,19 @@ function launchGfitOAuth(clientId, silent = false) {
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   if (isMobile) {
-    // Full-page redirect — checkOAuthRedirect() handles the return
     if (!silent) {
       sessionStorage.setItem('gfit_return_page', currentPage);
-      showToast('Redirecting to Google sign in...');
+      // Native Android: open in Chrome Custom Tab so Google sees Chrome's logged-in session
+      if (window.isNativeApp && typeof vitalCoreNative !== 'undefined' && vitalCoreNative.openCustomTab) {
+        vitalCoreNative.openCustomTab(authUrl);
+      } else {
+        showToast('Redirecting to Google sign in...');
+        setTimeout(() => { window.location.href = authUrl; }, 300);
+      }
+    } else {
+      // Silent re-auth still uses page redirect (no UI shown, prompt=none)
+      setTimeout(() => { window.location.href = authUrl; }, 0);
     }
-    setTimeout(() => { window.location.href = authUrl; }, silent ? 0 : 300);
     return;
   }
 
@@ -3698,6 +3705,15 @@ function checkOAuthRedirect() {
   if (window.parent !== window && (hash.includes('access_token') || search.includes('error='))) {
     try { window.parent.postMessage({ type: 'gfit_oauth', hash, search }, window.location.origin); } catch(e) {}
     return;
+  }
+
+  // Running in Chrome Custom Tab (not native WebView) on Android — relay token back to app
+  if (!window.isNativeApp && hash.includes('access_token') && /Android/i.test(navigator.userAgent)) {
+    const p = new URLSearchParams(hash.substring(1));
+    if (p.get('access_token')) {
+      window.location.href = 'vitalcore://oauth#' + hash.substring(1);
+      return;
+    }
   }
 
   // Check for OAuth error (e.g. interaction_required from a silent prompt=none attempt)
