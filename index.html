@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -12,6 +12,9 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <!-- Firebase Auth SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <!-- Tesseract.js for offline OCR -->
   <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
   <style>
@@ -885,18 +888,6 @@
     #gfitModalSignBtn:not([disabled]) { opacity: 1 !important; }
     #gfitModalSignBtn:not([disabled]):hover { background: #1557b0 !important; }
 
-    /* Health Connect tabs */
-    .hc-tab {
-      flex: 1; padding: 7px 8px; border-radius: 8px; font-size: 9px;
-      border: 1px solid var(--border); background: var(--surface2);
-      color: var(--text3); cursor: pointer; transition: all 0.15s;
-      font-family: 'JetBrains Mono', monospace; white-space: nowrap;
-    }
-    .hc-tab.active {
-      background: rgba(52,168,83,0.15); color: #34A853;
-      border-color: rgba(52,168,83,0.4);
-    }
-
     /* Nutrient tracker */
     .nutrient-row {
       display: flex;
@@ -1052,7 +1043,64 @@
   </style>
 </head>
 <body>
-<div id="app">
+
+<!-- ══════════════════════════════════════════════ LOGIN SCREEN ══ -->
+<div id="loginScreen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:9000;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto">
+  <div style="width:100%;max-width:380px">
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:var(--accent);margin-bottom:4px;text-align:center">VITAL<span style="color:var(--text)">CORE</span></div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;letter-spacing:1px;margin-bottom:32px;text-transform:uppercase">Your health, your data</div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;background:var(--surface2);border-radius:12px;padding:4px;margin-bottom:24px">
+      <button id="loginTabPhone" onclick="switchLoginTab('phone')" style="flex:1;padding:9px;border:none;border-radius:9px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s;background:var(--accent);color:#000;font-weight:700">📱 Phone</button>
+      <button id="loginTabEmail" onclick="switchLoginTab('email')" style="flex:1;padding:9px;border:none;border-radius:9px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text3)">✉ Email</button>
+      <button id="loginTabGoogle" onclick="switchLoginTab('google')" style="flex:1;padding:9px;border:none;border-radius:9px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text3)">G Google</button>
+    </div>
+
+    <!-- Phone OTP panel -->
+    <div id="loginPanelPhone">
+      <div id="loginPhoneStep1">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:0.5px">Enter your mobile number</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input id="loginPhoneCountry" type="text" value="+91" style="width:60px;padding:12px 8px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;text-align:center"/>
+          <input id="loginPhoneInput" type="tel" placeholder="98765 43210" style="flex:1;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px"/>
+        </div>
+        <div id="recaptchaContainer"></div>
+        <button onclick="loginSendOTP()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;cursor:pointer;margin-top:8px">Send OTP →</button>
+      </div>
+      <div id="loginPhoneStep2" style="display:none">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Enter the 6-digit code sent to <span id="loginPhoneDisplay" style="color:var(--accent)"></span></div>
+        <input id="loginOTPInput" type="number" placeholder="• • • • • •" maxlength="6" style="width:100%;padding:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:20px;text-align:center;letter-spacing:8px;margin-bottom:12px"/>
+        <button onclick="loginVerifyOTP()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;cursor:pointer">Verify &amp; Sign In →</button>
+        <button onclick="document.getElementById('loginPhoneStep1').style.display='';document.getElementById('loginPhoneStep2').style.display='none'" style="width:100%;padding:10px;background:transparent;border:none;color:var(--text3);font-size:10px;cursor:pointer;margin-top:8px">← Change number</button>
+      </div>
+    </div>
+
+    <!-- Email magic-link panel -->
+    <div id="loginPanelEmail" style="display:none">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px">We'll send a sign-in link to your email</div>
+      <input id="loginEmailInput" type="email" placeholder="you@example.com" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:12px"/>
+      <button onclick="loginSendEmailLink()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;cursor:pointer">Send Sign-in Link →</button>
+      <div id="loginEmailSent" style="display:none;margin-top:16px;padding:14px;background:rgba(200,255,0,0.08);border:1px solid rgba(200,255,0,0.2);border-radius:10px;font-size:11px;color:var(--accent);text-align:center;line-height:1.6">
+        ✓ Link sent! Check your inbox and tap the link to sign in.<br/>
+        <span style="color:var(--text3);font-size:10px">You can close this tab after clicking the link.</span>
+      </div>
+    </div>
+
+    <!-- Google Sign-in panel -->
+    <div id="loginPanelGoogle" style="display:none">
+      <button onclick="loginWithGoogle()" style="width:100%;padding:14px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:10px;font-family:'Roboto',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Sign in with Google
+      </button>
+    </div>
+
+    <div id="loginError" style="display:none;margin-top:16px;padding:12px;background:rgba(255,68,102,0.1);border:1px solid rgba(255,68,102,0.3);border-radius:10px;font-size:11px;color:var(--red);text-align:center"></div>
+  </div>
+</div>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div id="app" style="display:none">
 
   <!-- HEADER -->
   <div class="header">
@@ -1364,60 +1412,6 @@
         <div id="fitnessOcrResult" style="display:none;margin-top:12px"></div>
       </div>
 
-      <!-- HEALTH CONNECT IMPORT -->
-      <div class="card" style="border-color:rgba(52,211,153,0.3);background:linear-gradient(135deg,rgba(52,211,153,0.05),transparent)">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <!-- Health Connect icon (green heart with H) -->
-          <svg width="34" height="34" viewBox="0 0 34 34">
-            <rect width="34" height="34" rx="8" fill="#e8f5e9"/>
-            <path d="M17 26C17 26 8 20.5 8 14.5C8 11.5 10.2 9 13.2 9C14.9 9 16.4 9.9 17 11.2C17.6 9.9 19.1 9 20.8 9C23.8 9 26 11.5 26 14.5C26 20.5 17 26 17 26Z" fill="#34A853"/>
-            <text x="17" y="19" text-anchor="middle" font-size="8" font-weight="700" fill="white" font-family="sans-serif">HC</text>
-          </svg>
-          <div>
-            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--text)">Health Connect</div>
-            <div style="font-size:9px;color:var(--text3)">Android built-in · Steps · Heart rate · Sleep · Workouts</div>
-          </div>
-          <div style="font-size:8px;padding:3px 7px;border-radius:8px;background:rgba(52,211,153,0.15);color:#34A853;white-space:nowrap;margin-left:auto">Android 9+</div>
-        </div>
-
-        <!-- Tabs: Import file or Manual export guide -->
-        <div style="display:flex;gap:4px;margin-bottom:10px" id="hcTabs">
-          <button class="hc-tab active" onclick="showHcTab('import')" id="hcTab-import">📥 Import Export File</button>
-          <button class="hc-tab" onclick="showHcTab('guide')" id="hcTab-guide">📋 How to Export</button>
-        </div>
-
-        <!-- TAB: Import -->
-        <div id="hcPanel-import">
-          <label class="btn btn-primary" style="width:100%;text-align:center;cursor:pointer;display:block;background:linear-gradient(135deg,#34A853,#1e8c3a)">
-            📂 Import Health Connect Export (.zip)
-            <input type="file" accept=".zip,.json" style="display:none" onchange="importHealthConnect(this)" />
-          </label>
-          <div id="hcImportResult" style="display:none;margin-top:10px"></div>
-          <div style="font-size:9px;color:var(--text3);margin-top:8px;line-height:1.5">
-            Import the ZIP file exported from Health Connect app on your phone. App reads steps, calories, heart rate, workouts automatically.
-          </div>
-        </div>
-
-        <!-- TAB: How to export guide -->
-        <div id="hcPanel-guide" style="display:none">
-          <div style="background:var(--surface2);border-radius:8px;padding:12px">
-            <div style="font-size:10px;font-weight:700;color:var(--accent2);margin-bottom:8px">How to export from Health Connect:</div>
-            <div style="font-size:10px;color:var(--text2);line-height:1.9">
-              <span style="color:var(--accent)">1.</span> Open <strong>Settings</strong> on your Android phone<br/>
-              <span style="color:var(--accent)">2.</span> Search for <strong>"Health Connect"</strong> and open it<br/>
-              <span style="color:var(--accent)">3.</span> Tap <strong>Data &amp; privacy</strong><br/>
-              <span style="color:var(--accent)">4.</span> Tap <strong>Export or delete data</strong><br/>
-              <span style="color:var(--accent)">5.</span> Tap <strong>Export data</strong> → select date range<br/>
-              <span style="color:var(--accent)">6.</span> Save the ZIP file to Downloads<br/>
-              <span style="color:var(--accent)">7.</span> Come back here and tap <strong>Import Export File</strong>
-            </div>
-          </div>
-          <div style="font-size:9px;color:var(--text3);margin-top:8px;line-height:1.5">
-            Health Connect aggregates data from Google Fit, Samsung Health, Fitbit, Garmin, and 500+ other apps. One export covers all of them.
-          </div>
-        </div>
-      </div>
-
       <!-- Steps -->
       <div class="card">
         <div class="card-label">Steps Today</div>
@@ -1698,17 +1692,23 @@
 
           <!-- Export button — prominent -->
           <button class="btn btn-primary" style="width:100%;margin-bottom:8px;font-size:12px;padding:14px" onclick="exportData()">
-            📤 Export All Data
+            📤 Export All Data (Download JSON)
           </button>
+
+          <!-- Google Drive Backup -->
+          <button id="driveBackupBtn" onclick="backupToGoogleDrive()" style="width:100%;margin-bottom:8px;padding:14px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+            <svg width="16" height="16" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+            ☁ Backup to Google Drive
+          </button>
+          <div id="driveBackupStatus" style="display:none;margin-bottom:8px;padding:10px;border-radius:8px;font-size:10px;text-align:center"></div>
 
           <!-- Where it goes -->
           <div style="background:rgba(200,255,0,0.06);border:1px solid rgba(200,255,0,0.15);border-radius:8px;padding:10px;margin-bottom:8px">
             <div style="font-size:9px;color:var(--accent);letter-spacing:1px;margin-bottom:4px">WHERE IS THE FILE SAVED?</div>
             <div style="font-size:10px;color:var(--text2);line-height:1.6">
               📱 <strong>Android:</strong> Downloads folder<br/>
-              &nbsp;&nbsp;&nbsp;Open <em>Files</em> app → Downloads<br/>
               &nbsp;&nbsp;&nbsp;File: <code style="color:var(--accent2);font-size:9px">vitalcore-backup-DD-Mon-YYYY.json</code><br/>
-              🍎 <strong>iPhone:</strong> Files app → Downloads<br/>
+              ☁ <strong>Google Drive:</strong> <code style="color:var(--accent2);font-size:9px">vitalcore-backup.json</code> (auto-updated)<br/>
               💻 <strong>Desktop:</strong> Browser Downloads folder
             </div>
           </div>
@@ -1823,6 +1823,249 @@
 </div>
 
 <script>
+// ═══════════════════════════════════════════
+//  FIREBASE AUTH
+//  Fill in your config from:
+//  Firebase Console → Project Settings → General → Your apps → Web app → Config
+// ═══════════════════════════════════════════
+
+
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyAjLA3S0aNb8fwgBC9KuWzjhgd6YIyXAdU",
+    authDomain: "vitalcore-6e029.firebaseapp.com",
+    projectId: "vitalcore-6e029",
+    storageBucket: "vitalcore-6e029.firebasestorage.app",
+    messagingSenderId: "508842124472",
+    appId: "1:508842124472:web:2a53ec0f85d6d135c6c04d",
+    measurementId: "G-GF5JP5L748"
+  };
+
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAjLA3S0aNb8fwgBC9KuWzjhgd6YIyXAdU",
+  authDomain: "vitalcore-6e029.firebaseapp.com",
+  projectId: "vitalcore-6e029",
+  storageBucket: "vitalcore-6e029.firebasestorage.app",
+  messagingSenderId: "508842124472",
+  appId: "1:508842124472:web:2a53ec0f85d6d135c6c04d",
+  measurementId: "G-GF5JP5L748"
+};
+
+// ─── LOGIN SCREEN LOGIC ───
+let _phoneConfirmResult = null;
+let _recaptchaVerifier  = null;
+const GOOGLE_DRIVE_CLIENT_ID = '305549422086-50rjn2f35oqpo9ak72pb6c6mhih1cu0v.apps.googleusercontent.com';
+
+function switchLoginTab(tab) {
+  ['phone','email','google'].forEach(t => {
+    const btn   = document.getElementById('loginTab' + t[0].toUpperCase() + t.slice(1));
+    const panel = document.getElementById('loginPanel' + t[0].toUpperCase() + t.slice(1));
+    const active = t === tab;
+    if (btn) btn.style.cssText = active
+      ? 'flex:1;padding:9px;border:none;border-radius:9px;font-family:"JetBrains Mono",monospace;font-size:10px;cursor:pointer;transition:all 0.2s;background:var(--accent);color:#000;font-weight:700'
+      : 'flex:1;padding:9px;border:none;border-radius:9px;font-family:"JetBrains Mono",monospace;font-size:10px;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text3)';
+    if (panel) panel.style.display = active ? '' : 'none';
+  });
+  document.getElementById('loginError').style.display = 'none';
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function loginSendOTP() {
+  if (!_auth) { showLoginError('Auth not ready. Check Firebase config.'); return; }
+  const cc  = document.getElementById('loginPhoneCountry').value.trim();
+  const num = document.getElementById('loginPhoneInput').value.trim().replace(/\s/g,'');
+  if (!num) { showLoginError('Enter your phone number.'); return; }
+  document.getElementById('loginError').style.display = 'none';
+
+  if (!_recaptchaVerifier) {
+    _recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptchaContainer', {
+      size: 'invisible', callback: () => {}
+    });
+  }
+  _auth.signInWithPhoneNumber(cc + num, _recaptchaVerifier)
+    .then(r => {
+      _phoneConfirmResult = r;
+      document.getElementById('loginPhoneDisplay').textContent = cc + num;
+      document.getElementById('loginPhoneStep1').style.display = 'none';
+      document.getElementById('loginPhoneStep2').style.display = '';
+    })
+    .catch(err => {
+      showLoginError(err.message || 'Failed to send OTP.');
+      if (_recaptchaVerifier) { _recaptchaVerifier.clear(); _recaptchaVerifier = null; }
+    });
+}
+
+function loginVerifyOTP() {
+  if (!_phoneConfirmResult) { showLoginError('Request OTP first.'); return; }
+  const code = document.getElementById('loginOTPInput').value.trim();
+  if (code.length < 6) { showLoginError('Enter the 6-digit code.'); return; }
+  document.getElementById('loginError').style.display = 'none';
+  _phoneConfirmResult.confirm(code).catch(err => showLoginError('Invalid code. Try again.'));
+}
+
+function loginSendEmailLink() {
+  if (!_auth) { showLoginError('Auth not ready. Check Firebase config.'); return; }
+  const email = document.getElementById('loginEmailInput').value.trim();
+  if (!email.includes('@')) { showLoginError('Enter a valid email address.'); return; }
+  document.getElementById('loginError').style.display = 'none';
+  _auth.sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true })
+    .then(() => {
+      localStorage.setItem('emailForSignIn', email);
+      document.getElementById('loginEmailSent').style.display = 'block';
+    })
+    .catch(err => showLoginError(err.message || 'Failed to send link.'));
+}
+
+function loginWithGoogle() {
+  if (!_auth) { showLoginError('Auth not ready. Check Firebase config.'); return; }
+  document.getElementById('loginError').style.display = 'none';
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/drive.file');
+  _auth.signInWithRedirect(provider);
+}
+
+function checkEmailSignInLink() {
+  if (!_auth || !_auth.isSignInWithEmailLink(window.location.href)) return;
+  let email = localStorage.getItem('emailForSignIn');
+  if (!email) email = window.prompt('Confirm your email:');
+  if (email) {
+    _auth.signInWithEmailLink(email, window.location.href)
+      .then(() => {
+        localStorage.removeItem('emailForSignIn');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      })
+      .catch(err => console.warn('Email link sign-in failed:', err.message));
+  }
+}
+
+function initFirebaseAuth() {
+  if (!_auth) { showMainApp(); return; }
+
+  _auth.getRedirectResult().then(result => {
+    if (result && result.credential) {
+      const token = result.credential.accessToken;
+      if (token && window.S && S.settings) {
+        S.settings.driveToken       = token;
+        S.settings.driveTokenExpiry = Date.now() + 3600 * 1000;
+        save(S);
+      }
+    }
+  }).catch(err => console.warn('Redirect result:', err.message));
+
+  checkEmailSignInLink();
+
+  _auth.onAuthStateChanged(user => {
+    if (user) showMainApp(); else showLoginScreenUI();
+  });
+}
+
+function showMainApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = '';
+}
+
+function showLoginScreenUI() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+function signOut() {
+  if (_auth) _auth.signOut();
+}
+
+// ─── GOOGLE DRIVE BACKUP ───
+const GDRIVE_BACKUP_FILENAME = 'vitalcore-backup.json';
+
+async function backupToGoogleDrive() {
+  const token  = S.settings && S.settings.driveToken;
+  const expiry = S.settings && S.settings.driveTokenExpiry;
+  if (!token || Date.now() > expiry) { launchDriveOAuth(); return; }
+  await uploadToDrive(token);
+}
+
+function launchDriveOAuth() {
+  const scope    = encodeURIComponent('https://www.googleapis.com/auth/drive.file');
+  const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
+  const authUrl  = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_DRIVE_CLIENT_ID}&redirect_uri=${redirect}&response_type=token&scope=${scope}&state=drive_oauth`;
+  if (window.isNativeApp && window.vitalCoreNative && vitalCoreNative.openCustomTab) {
+    vitalCoreNative.openCustomTab(authUrl);
+  } else {
+    window.location.href = authUrl;
+  }
+}
+
+function checkDriveOAuthRedirect() {
+  const hash = window.location.hash;
+  if (!hash) return;
+  const params = new URLSearchParams(hash.slice(1));
+  if (params.get('state') !== 'drive_oauth') return;
+  const token = params.get('access_token');
+  const exIn  = parseInt(params.get('expires_in') || '3600', 10);
+  if (!token) return;
+  if (!S.settings) S.settings = defaultState().settings;
+  S.settings.driveToken       = token;
+  S.settings.driveTokenExpiry = Date.now() + exIn * 1000;
+  save(S);
+  window.history.replaceState({}, document.title, window.location.pathname);
+  showToast('Google Drive connected ✓');
+  uploadToDrive(token);
+}
+
+async function uploadToDrive(token) {
+  const statusEl = document.getElementById('driveBackupStatus');
+  function setStatus(txt, color) {
+    if (!statusEl) return;
+    statusEl.style.display = 'block';
+    statusEl.style.cssText = `display:block;margin-bottom:8px;padding:10px;border-radius:8px;font-size:10px;text-align:center;background:${color === 'green' ? 'rgba(52,211,153,0.08)' : color === 'red' ? 'rgba(255,68,102,0.08)' : 'rgba(200,255,0,0.06)'};color:${color === 'green' ? '#34A853' : color === 'red' ? 'var(--red)' : 'var(--text2)'}`;
+    statusEl.textContent = txt;
+  }
+  setStatus('⏳ Uploading to Drive...', 'yellow');
+  try {
+    const json = JSON.stringify(S, null, 2);
+    const searchResp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name%3D'${GDRIVE_BACKUP_FILENAME}'+and+trashed%3Dfalse&fields=files(id)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const searchData = await searchResp.json();
+    const fileId = searchData.files && searchData.files[0] && searchData.files[0].id;
+
+    if (fileId) {
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: json
+      });
+    } else {
+      const boundary = 'vc_bnd';
+      await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary="${boundary}"` },
+        body: `--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
+              JSON.stringify({ name: GDRIVE_BACKUP_FILENAME, mimeType: 'application/json' }) +
+              `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n` + json + `\r\n--${boundary}--`
+      });
+    }
+    setStatus(`✓ Backed up — ${new Date().toLocaleString()}`, 'green');
+    showToast('✓ Backed up to Google Drive');
+  } catch(e) {
+    setStatus('Drive backup failed. Reconnect and try again.', 'red');
+    if (S.settings) { delete S.settings.driveToken; delete S.settings.driveTokenExpiry; save(S); }
+    showToast('Drive backup failed');
+  }
+}
+
 // ═══════════════════════════════════════════
 //  STORAGE + STATE
 // ═══════════════════════════════════════════
@@ -4411,234 +4654,6 @@ function applyFitnessOcr(d) {
   showToast('Fitness data applied ✓');
 }
 
-// ═══════════════════════════════════════════
-//  HEALTH CONNECT IMPORT
-//  Parses the ZIP exported from Health Connect
-//  on Android: Settings → Health Connect →
-//  Data & privacy → Export or delete data
-// ═══════════════════════════════════════════
-
-function showHcTab(tab) {
-  document.getElementById('hcPanel-import').style.display = tab === 'import' ? 'block' : 'none';
-  document.getElementById('hcPanel-guide').style.display  = tab === 'guide'  ? 'block' : 'none';
-  document.querySelectorAll('.hc-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(`hcTab-${tab}`)?.classList.add('active');
-}
-
-async function importHealthConnect(input) {
-  if (!input.files[0]) return;
-  const file = input.files[0];
-  const el   = document.getElementById('hcImportResult');
-  el.style.display = 'block';
-  el.innerHTML = `<div style="font-size:10px;color:var(--text2)">⏳ Reading Health Connect export...</div>`;
-
-  try {
-    const name = file.name.toLowerCase();
-
-    if (name.endsWith('.zip')) {
-      await parseHealthConnectZip(file, el);
-    } else if (name.endsWith('.json')) {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      parseHealthConnectJSON(data, el);
-    } else {
-      el.innerHTML = `<div class="insight-box">⚠ Please upload the .zip file exported from Health Connect, or a .json file.</div>`;
-    }
-  } catch(e) {
-    el.innerHTML = `<div class="insight-box">⚠ Could not read file: ${e.message}<br/>
-      <small style="color:var(--text3)">Make sure you exported from Health Connect → Data &amp; privacy → Export data</small></div>`;
-  }
-}
-
-async function parseHealthConnectZip(file, el) {
-  // Load JSZip from CDN
-  if (!window.JSZip) {
-    el.innerHTML = `<div style="font-size:10px;color:var(--text2)">⏳ Loading ZIP reader...</div>`;
-    await new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-      s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  }
-
-  const zip = await JSZip.loadAsync(file);
-  const allData = {
-    steps: 0, calories: 0, activeMin: 0,
-    heartRate: null, distance: 0,
-    workouts: [], date: todayStr()
-  };
-
-  // Health Connect export structure:
-  // metadata.json — export info
-  // data/
-  //   StepCount.json / steps.json
-  //   ActiveCaloriesBurned.json / calories.json
-  //   ExerciseSession.json / sessions.json
-  //   HeartRate.json
-  //   Distance.json
-  //   TotalCaloriesBurned.json
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayMs = today.getTime();
-  const tomorrowMs = todayMs + 86400000;
-
-  // Helper: filter to today's data points
-  function isToday(timeStr) {
-    if (!timeStr) return false;
-    const t = new Date(timeStr).getTime();
-    return t >= todayMs && t < tomorrowMs;
-  }
-
-  // Helper: find a file in zip by partial name (case-insensitive)
-  function findFile(keyword) {
-    const files = Object.keys(zip.files);
-    return files.find(f => f.toLowerCase().includes(keyword.toLowerCase()) && !zip.files[f].dir);
-  }
-
-  // ── Parse Steps ──
-  const stepsFile = findFile('stepcount') || findFile('steps');
-  if (stepsFile) {
-    const text = await zip.files[stepsFile].async('string');
-    const json = JSON.parse(text);
-    const records = json.stepCountSeries || json.records || json.data || (Array.isArray(json) ? json : []);
-    let todaySteps = 0;
-    for (const r of records) {
-      const start = r.startTime || r.startDate || r.time || r.date || '';
-      if (isToday(start) || records.length === 1) {
-        todaySteps += r.count || r.steps || r.value || 0;
-      }
-    }
-    // If no today filter matched, sum all (might be single-day export)
-    if (todaySteps === 0 && records.length > 0) {
-      for (const r of records) todaySteps += r.count || r.steps || r.value || 0;
-    }
-    if (todaySteps > 0) allData.steps = todaySteps;
-  }
-
-  // ── Parse Calories ──
-  const calFile = findFile('activecalories') || findFile('calories') || findFile('totalcalories');
-  if (calFile) {
-    const text = await zip.files[calFile].async('string');
-    const json = JSON.parse(text);
-    const records = json.activeCaloriesBurnedSeries || json.records || json.data || (Array.isArray(json) ? json : []);
-    let todayCal = 0;
-    for (const r of records) {
-      const start = r.startTime || r.startDate || r.time || r.date || '';
-      if (isToday(start) || records.length === 1) {
-        todayCal += r.energy?.inKilocalories || r.energyKcal || r.calories || r.value || 0;
-      }
-    }
-    if (todayCal === 0 && records.length > 0) {
-      for (const r of records) todayCal += r.energy?.inKilocalories || r.energyKcal || r.calories || r.value || 0;
-    }
-    if (todayCal > 0) allData.calories = Math.round(todayCal);
-  }
-
-  // ── Parse Heart Rate ──
-  const hrFile = findFile('heartrate');
-  if (hrFile) {
-    const text = await zip.files[hrFile].async('string');
-    const json = JSON.parse(text);
-    const records = json.heartRateSeries || json.records || json.data || (Array.isArray(json) ? json : []);
-    const todayRecs = records.filter(r => isToday(r.startTime || r.time || r.date || ''));
-    const relevant = todayRecs.length > 0 ? todayRecs : records.slice(-20);
-    if (relevant.length > 0) {
-      const vals = relevant.flatMap(r => r.samples?.map(s => s.beatsPerMinute || s.bpm) || [r.beatsPerMinute || r.bpm || r.value]).filter(Boolean);
-      if (vals.length > 0) allData.heartRate = Math.round(vals.reduce((a,b) => a+b, 0) / vals.length);
-    }
-  }
-
-  // ── Parse Distance ──
-  const distFile = findFile('distance');
-  if (distFile) {
-    const text = await zip.files[distFile].async('string');
-    const json = JSON.parse(text);
-    const records = json.distanceSeries || json.records || json.data || (Array.isArray(json) ? json : []);
-    let todayDist = 0;
-    for (const r of records) {
-      const start = r.startTime || r.startDate || r.time || r.date || '';
-      if (isToday(start) || records.length === 1) {
-        todayDist += r.distance?.inMeters || r.meters || r.distanceMeters || r.value || 0;
-      }
-    }
-    if (todayDist === 0 && records.length > 0) {
-      for (const r of records) todayDist += r.distance?.inMeters || r.meters || r.value || 0;
-    }
-    allData.distance = Math.round(todayDist / 100) / 10; // → km
-  }
-
-  // ── Parse Exercise Sessions ──
-  const sessFile = findFile('exercisesession') || findFile('sessions') || findFile('workout');
-  if (sessFile) {
-    const text = await zip.files[sessFile].async('string');
-    const json = JSON.parse(text);
-    const records = json.exerciseSessionSeries || json.records || json.data || (Array.isArray(json) ? json : []);
-    for (const r of records) {
-      const start = r.startTime || r.startDate || r.time || '';
-      if (isToday(start) || records.length <= 5) {
-        const dur = r.endTime && r.startTime
-          ? Math.round((new Date(r.endTime) - new Date(r.startTime)) / 60000)
-          : (r.durationMinutes || r.duration || 0);
-        allData.workouts.push({
-          name: r.title || r.exerciseType || r.type || 'Workout',
-          duration: dur,
-          type: r.exerciseType || r.type || ''
-        });
-      }
-    }
-  }
-
-  // Apply to today
-  applyHealthConnectData(allData, el);
-}
-
-function parseHealthConnectJSON(json, el) {
-  // Single JSON export — try common formats
-  const data = {
-    steps:     json.steps || json.stepCount || 0,
-    calories:  json.calories || json.activeCalories || 0,
-    heartRate: json.heartRate || json.avgHeartRate || null,
-    distance:  json.distance || json.distanceKm || 0,
-    workouts:  json.workouts || json.sessions || [],
-    date:      todayStr()
-  };
-  applyHealthConnectData(data, el);
-}
-
-function applyHealthConnectData(data, el) {
-  if (!data.steps && !data.calories && !data.heartRate && !data.workouts?.length) {
-    el.innerHTML = `<div class="insight-box">⚠ No activity data found in this file.<br/>
-      <small style="color:var(--text3)">Make sure you exported today's data from Health Connect.</small></div>`;
-    return;
-  }
-
-  // Apply to today's state
-  if (data.steps > 0)    S.today.steps = data.steps;
-  if (data.calories > 0) S.today.activityCals = data.calories;
-  if (data.workouts?.length > 0) {
-    const w = data.workouts[data.workouts.length - 1];
-    S.today.workoutDone = true;
-    const strengthKeywords = /strength|weight|lift|gym|bench|squat|deadlift|push|pull|bicep|tricep|shoulder/i;
-    S.today.workoutType     = strengthKeywords.test(w.name + ' ' + w.type) ? 'Strength' : 'Cardio';
-    S.today.workoutDuration = w.duration || null;
-  }
-  save(S);
-  renderAll();
-
-  // Show result
-  let html = `<div class="ocr-extracted">
-    <div style="font-size:10px;font-weight:700;color:#34A853;margin-bottom:8px">✓ HEALTH CONNECT DATA IMPORTED</div>`;
-  if (data.steps    > 0) html += `<div class="ocr-row"><span>Steps</span><span class="ocr-val" style="color:#34A853">${data.steps.toLocaleString()}</span></div>`;
-  if (data.calories > 0) html += `<div class="ocr-row"><span>Calories Burned</span><span class="ocr-val" style="color:#EA4335">${data.calories} kcal</span></div>`;
-  if (data.heartRate)    html += `<div class="ocr-row"><span>Avg Heart Rate</span><span class="ocr-val" style="color:#FF6B6B">${data.heartRate} bpm</span></div>`;
-  if (data.distance > 0) html += `<div class="ocr-row"><span>Distance</span><span class="ocr-val" style="color:#4285F4">${data.distance} km</span></div>`;
-  if (data.workouts?.length > 0) html += `<div class="ocr-row"><span>Workouts</span><span class="ocr-val" style="color:#FBBC04">${data.workouts.length} session(s)</span></div>`;
-  html += `</div>`;
-  el.innerHTML = html;
-  showToast(`Health Connect imported ✓ ${data.steps > 0 ? data.steps.toLocaleString() + ' steps' : ''}`);
-}
 async function scanWorkoutScreenshot(input) {
   if (!input.files[0]) return;
   await runOCR(input.files[0], 'workoutOcrResult', (result, cid) => {
@@ -5004,9 +5019,11 @@ loadScript('ocr-engine.js');
 
 renderAll();
 applyStoredTheme();
-checkOAuthRedirect();   // must run AFTER showToast is defined
-startMidnightScheduler(); // must run AFTER showToast is defined
-initProfileCheck();     // show onboarding on first install
+checkOAuthRedirect();     // Google Fit OAuth
+checkDriveOAuthRedirect(); // Google Drive OAuth
+startMidnightScheduler();
+initProfileCheck();
+initFirebaseAuth();       // show login screen if not signed in
 
 // Auto-sync Google Fit on every app load; silent re-auth if token expired
 (function autoSyncGfit() {
