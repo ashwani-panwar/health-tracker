@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terms of Service — VitalCore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #ffffff0f;
+    --border2: #ffffff18;
+    --accent: #c8ff00;
+    --accent2: #00ffc8;
+    --accent3: #ff6b35;
+    --text: #f0f0f5;
+    --text2: #8888aa;
+    --text3: #555570;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+  .back-link {
+    font-size: 12px;
+    color: var(--text2);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 20px;
+    transition: all 0.2s;
+  }
+  .back-link:hover { border-color: var(--accent); color: var(--accent); }
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  .page-badge {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--accent3);
+    color: var(--accent3);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    color: var(--text2);
+    font-size: 13px;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  .section:hover { border-color: var(--border2); }
+  .section-num {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--accent3);
+    color: var(--accent3);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  p { color: var(--text2); font-size: 13px; margin-bottom: 12px; }
+  p:last-child { margin-bottom: 0; }
+  ul { list-style: none; padding: 0; }
+  ul li {
+    color: var(--text2);
+    font-size: 13px;
+    padding: 6px 0 6px 20px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  ul li:last-child { border-bottom: none; }
+  ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent3);
+  }
+  .warning-box {
+    background: rgba(255, 107, 53, 0.06);
+    border: 1px solid rgba(255, 107, 53, 0.25);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .warning-box p { color: var(--text); font-size: 13px; margin: 0; }
+  .warning-box strong { color: var(--accent3); }
+  .contact-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    text-align: center;
+    margin-top: 40px;
+  }
+  .contact-box h3 { font-family: 'Syne', sans-serif; font-size: 16px; margin-bottom: 8px; }
+  .contact-box p { font-size: 12px; }
+  .contact-box a { color: var(--accent2); text-decoration: none; }
+  .footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 24px;
+    text-align: center;
+  }
+  .footer p { font-size: 11px; color: var(--text3); }
+  .footer a { color: var(--text2); text-decoration: none; margin: 0 12px; }
+  .footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a class="logo" href="index.html">
+    <svg width="24" height="24" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="13" cy="13" r="12" stroke="#c8ff00" stroke-width="1.2" opacity="0.35"/>
+      <path d="M3 13h4l2.5-5.5L13 19l3-8.5 2 4.5H23" stroke="#c8ff00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    VITAL<span>CORE</span>
+  </a>
+  <a class="back-link" href="index.html">← Back to App</a>
+</header>
+
+<main class="container">
+  <div class="page-badge">Legal</div>
+  <h1>Terms of <span>Service</span></h1>
+  <p class="subtitle">Last updated: May 27, 2026 &nbsp;·&nbsp; Effective: May 27, 2026</p>
+
+  <div class="warning-box">
+    <p><strong>Medical Disclaimer:</strong> VitalCore is a personal health tracking tool designed for general wellness purposes only. It is <strong>not a medical device</strong> and does not provide medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional for medical guidance.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-num">01</span>
+    <h2>Acceptance of Terms</h2>
+    <p>By accessing or using VitalCore ("the App"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use the App.</p>
+    <p>These Terms apply to all users of VitalCore, including users who access the app through a web browser or install it as a Progressive Web App (PWA).</p>
+  </div>
+
+  <div class="section">
+    <span class="section-num">02</span>
+    <h2>Description of Service</h2>
+    <p>VitalCore is an offline-first Progressive Web App (PWA) designed to help you track and manage your personal health and wellness data, including:</p>
+    <ul>
+      <li>Daily nutrition and calorie intake logging</li>
+      <li>Exercise and physical activity tracking</li>
+      <li>Body metrics and fitness goal monitoring</li>
+      <li>Nutrition analysis via OCR-based food label scanning</li>
+      <li>Optional Google Fit integration for fitness data sync</li>
+      <li>Optional Google Drive backup for data persistence</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-num">03</span>
+    <h2>User Accounts &amp; Authentication</h2>
+    <p>VitalCore uses Google Firebase Authentication to manage user accounts. By signing in, you agree to:</p>
+    <ul>
+      <li>Provide accurate and complete account information</li>
+      <li>Maintain the security and confidentiality of your account credentials</li>
+      <li>Accept responsibility for all activities that occur under your account</li>
+      <li>Notify us immediately of any unauthorized use of your account</li>
+    </ul>
+    <p>You may use VitalCore without an account in offline mode, though some features (Google Fit sync, cloud backup) require authentication.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-num">04</span>
+    <h2>Acceptable Use</h2>
+    <p>You agree to use VitalCore only for lawful, personal wellness tracking purposes. You must not:</p>
+    <ul>
+      <li>Use the App for any commercial purpose without explicit written permission</li>
+      <li>Attempt to reverse-engineer, decompile, or extract the App's source code</li>
+      <li>Use the App to transmit harmful, offensive, or illegal content</li>
+      <li>Attempt to gain unauthorized access to any part of the App or its infrastructure</li>
+      <li>Interfere with or disrupt the App's functionality or connected services</li>
+      <li>Use automated tools to scrape, crawl, or extract data from the App</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-num">05</span>
+    <h2>Health &amp; Medical Disclaimer</h2>
+    <p>VitalCore provides general health and wellness tracking functionality. The App and its content are provided for informational and personal tracking purposes only.</p>
+    <ul>
+      <li>VitalCore is <strong>not a medical device</strong> and is not FDA-approved or regulated</li>
+      <li>Nutritional data and calorie estimates are approximations and may not be perfectly accurate</li>
+      <li>Do not use VitalCore as a substitute for professional medical advice or treatment</li>
+      <li>Always consult a doctor, dietitian, or certified fitness professional before making significant changes to your diet or exercise routine</li>
+      <li>If you have a medical condition, please seek professional guidance before relying on any data from the App</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-num">06</span>
+    <h2>Third-Party Integrations</h2>
+    <p>VitalCore integrates with optional third-party services. Your use of these integrations is subject to the respective third-party terms:</p>
+    <ul>
+      <li><strong>Google Firebase Auth:</strong> Subject to Google's Terms of Service and Firebase Terms</li>
+      <li><strong>Google Fit API:</strong> Subject to Google Fit Terms of Service (optional, requires authorization)</li>
+      <li><strong>Google Drive API:</strong> Subject to Google Drive Terms of Service (optional, requires authorization)</li>
+    </ul>
+    <p>We are not responsible for the availability, accuracy, or terms of any third-party service. You may revoke any third-party authorization at any time through your Google Account settings.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-num">07</span>
+    <h2>Intellectual Property</h2>
+    <p>VitalCore and its original content, features, and functionality are owned by the VitalCore developers and are protected by applicable intellectual property laws.</p>
+    <ul>
+      <li>The VitalCore name, logo, and design are proprietary assets</li>
+      <li>You may not reproduce, distribute, or create derivative works without permission</li>
+      <li>User-generated data (your health logs) remains your property at all times</li>
+      <li>Open-source components used in VitalCore are subject to their respective licenses</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-num">08</span>
+    <h2>Limitation of Liability</h2>
+    <p>To the fullest extent permitted by applicable law, VitalCore and its developers shall not be liable for:</p>
+    <ul>
+      <li>Any indirect, incidental, or consequential damages arising from your use of the App</li>
+      <li>Loss of data due to device failure, browser storage limits, or user error</li>
+      <li>Inaccuracies in nutritional data sourced from third-party databases</li>
+      <li>Health outcomes resulting from actions taken based on App data</li>
+      <li>Service interruptions due to third-party service outages (Firebase, Google APIs)</li>
+    </ul>
+    <p>VitalCore is provided "as is" and "as available" without warranties of any kind, either express or implied.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-num">09</span>
+    <h2>Data &amp; Account Termination</h2>
+    <p>You may stop using VitalCore at any time. You can:</p>
+    <ul>
+      <li>Clear all local app data via Settings → Clear All Data</li>
+      <li>Export your data as JSON before deletion via Settings → Export Data</li>
+      <li>Delete your Firebase Auth account via Settings → Account → Delete Account</li>
+      <li>Revoke Google API permissions via your Google Account → Security → Third-party access</li>
+    </ul>
+    <p>We reserve the right to terminate access for users who violate these Terms.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-num">10</span>
+    <h2>Changes to Terms</h2>
+    <p>We may update these Terms of Service from time to time. When we make material changes, we will update the "Last updated" date at the top of this page. Continued use of VitalCore after such changes constitutes your acceptance of the revised Terms.</p>
+    <p>We encourage you to review these Terms periodically to stay informed about your rights and obligations.</p>
+  </div>
+
+  <div class="contact-box">
+    <h3>Questions about these Terms?</h3>
+    <p>If you have any questions or concerns about these Terms of Service, please contact us.</p>
+    <p style="margin-top:12px;"><a href="mailto:legal@vitalcore.app">legal@vitalcore.app</a></p>
+  </div>
+</main>
+
+<footer class="footer">
+  <p>
+    <a href="index.html">VitalCore App</a>
+    <a href="privacy-policy.html">Privacy Policy</a>
+    <a href="terms-of-service.html">Terms of Service</a>
+  </p>
+  <p style="margin-top:10px;">© 2026 VitalCore. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
