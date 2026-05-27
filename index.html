@@ -1046,7 +1046,7 @@
 <body>
 
 <!-- ══════════════════════════════════════════════ LOGIN SCREEN ══ -->
-<div id="loginScreen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:9000;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto">
+<div id="loginScreen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:100000;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto">
   <div style="width:100%;max-width:380px">
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:var(--accent);margin-bottom:4px;text-align:center">VITAL<span style="color:var(--text)">CORE</span></div>
     <div style="font-size:11px;color:var(--text3);text-align:center;letter-spacing:1px;margin-bottom:32px;text-transform:uppercase">Your health, your data</div>
@@ -1825,39 +1825,34 @@
 
 <script>
 // ═══════════════════════════════════════════
-//  FIREBASE AUTH
-//  Fill in your config from:
-//  Firebase Console → Project Settings → General → Your apps → Web app → Config
+//  FIREBASE AUTH  (compat SDK v10 — loaded in <head>)
+//
+//  IMPORTANT: the import{} lines that were here before caused a
+//  SyntaxError in plain <script> context, which broke ALL JavaScript
+//  on the page.  They have been removed.  The compat SDK loaded in
+//  <head> provides the global `firebase` object used below.
+//
+//  One-time Firebase Console setup required:
+//    Authentication → Sign-in method → enable Phone, Email/Password, Google
+//    Authentication → Settings → Authorized domains → add:
+//      ashwani-panwar.github.io
 // ═══════════════════════════════════════════
 
-
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyAjLA3S0aNb8fwgBC9KuWzjhgd6YIyXAdU",
-    authDomain: "vitalcore-6e029.firebaseapp.com",
-    projectId: "vitalcore-6e029",
-    storageBucket: "vitalcore-6e029.firebasestorage.app",
-    messagingSenderId: "508842124472",
-    appId: "1:508842124472:web:2a53ec0f85d6d135c6c04d",
-    measurementId: "G-GF5JP5L748"
-  };
-
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyAjLA3S0aNb8fwgBC9KuWzjhgd6YIyXAdU",
-  authDomain: "vitalcore-6e029.firebaseapp.com",
-  projectId: "vitalcore-6e029",
-  storageBucket: "vitalcore-6e029.firebasestorage.app",
-  messagingSenderId: "508842124472",
-  appId: "1:508842124472:web:2a53ec0f85d6d135c6c04d",
-  measurementId: "G-GF5JP5L748"
+  apiKey:            'AIzaSyAjLA3S0aNb8fwgBC9KuWzjhgd6YIyXAdU',
+  authDomain:        'vitalcore-6e029.firebaseapp.com',
+  projectId:         'vitalcore-6e029',
+  storageBucket:     'vitalcore-6e029.firebasestorage.app',
+  messagingSenderId: '508842124472',
+  appId:             '1:508842124472:web:2a53ec0f85d6d135c6c04d'
 };
+
+// Initialise compat SDK and export auth instance
+firebase.initializeApp(firebaseConfig);
+const _auth = firebase.auth();
+
+// Persist login across app restarts
+_auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
 
 // ─── LOGIN SCREEN LOGIC ───
 let _phoneConfirmResult = null;
@@ -1883,29 +1878,48 @@ function showLoginError(msg) {
   el.style.display = 'block';
 }
 
-function loginSendOTP() {
-  if (!_auth) { showLoginError('Auth not ready. Check Firebase config.'); return; }
+async function loginSendOTP() {
   const cc  = document.getElementById('loginPhoneCountry').value.trim();
-  const num = document.getElementById('loginPhoneInput').value.trim().replace(/\s/g,'');
+  const num = document.getElementById('loginPhoneInput').value.trim().replace(/[\s\-\(\)]/g, '').replace(/^0+/, '');
   if (!num) { showLoginError('Enter your phone number.'); return; }
+
+  const phone = (cc.startsWith('+') ? cc : '+' + cc) + num;
   document.getElementById('loginError').style.display = 'none';
 
-  if (!_recaptchaVerifier) {
+  const btn = document.querySelector('#loginPhoneStep1 button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  try {
+    // Always tear down the previous verifier before creating a fresh one.
+    // Reusing a stale verifier is the most common reason OTP silently fails.
+    if (_recaptchaVerifier) {
+      try { _recaptchaVerifier.clear(); } catch (_) {}
+      _recaptchaVerifier = null;
+    }
+
+    // Invisible reCAPTCHA — no UI challenge shown to the user.
+    // Requires ashwani-panwar.github.io in Firebase → Auth → Authorized Domains.
     _recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptchaContainer', {
-      size: 'invisible', callback: () => {}
+      size: 'invisible',
+      callback: () => {},
+      'expired-callback': () => { _recaptchaVerifier = null; }
     });
+
+    // Pre-render the token so it is ready when signInWithPhoneNumber is called
+    await _recaptchaVerifier.render();
+
+    _phoneConfirmResult = await _auth.signInWithPhoneNumber(phone, _recaptchaVerifier);
+
+    document.getElementById('loginPhoneDisplay').textContent = phone;
+    document.getElementById('loginPhoneStep1').style.display = 'none';
+    document.getElementById('loginPhoneStep2').style.display = '';
+
+  } catch (err) {
+    // Clear broken verifier so the next tap creates a clean one
+    if (_recaptchaVerifier) { try { _recaptchaVerifier.clear(); } catch (_) {} _recaptchaVerifier = null; }
+    showLoginError(_authCodeToMsg(err));
+    if (btn) { btn.disabled = false; btn.textContent = 'Send OTP →'; }
   }
-  _auth.signInWithPhoneNumber(cc + num, _recaptchaVerifier)
-    .then(r => {
-      _phoneConfirmResult = r;
-      document.getElementById('loginPhoneDisplay').textContent = cc + num;
-      document.getElementById('loginPhoneStep1').style.display = 'none';
-      document.getElementById('loginPhoneStep2').style.display = '';
-    })
-    .catch(err => {
-      showLoginError(err.message || 'Failed to send OTP.');
-      if (_recaptchaVerifier) { _recaptchaVerifier.clear(); _recaptchaVerifier = null; }
-    });
 }
 
 function loginVerifyOTP() {
@@ -1913,7 +1927,36 @@ function loginVerifyOTP() {
   const code = document.getElementById('loginOTPInput').value.trim();
   if (code.length < 6) { showLoginError('Enter the 6-digit code.'); return; }
   document.getElementById('loginError').style.display = 'none';
-  _phoneConfirmResult.confirm(code).catch(err => showLoginError('Invalid code. Try again.'));
+
+  const btn = document.querySelector('#loginPhoneStep2 button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verifying…'; }
+
+  _phoneConfirmResult.confirm(code)
+    .catch(err => {
+      showLoginError(_authCodeToMsg(err));
+      if (btn) { btn.disabled = false; btn.textContent = 'Verify & Sign In →'; }
+    });
+}
+
+// ── Friendly error messages for Firebase auth error codes ──
+function _authCodeToMsg(err) {
+  const MAP = {
+    'auth/invalid-phone-number':      'Invalid phone number. Use format: +91XXXXXXXXXX',
+    'auth/invalid-verification-code': 'Wrong OTP — check and try again.',
+    'auth/code-expired':              'OTP expired. Tap "Send OTP" again.',
+    'auth/too-many-requests':         'Too many attempts. Please wait a moment.',
+    'auth/quota-exceeded':            'SMS quota exceeded. Try email sign-in.',
+    'auth/network-request-failed':    'Network error. Check your connection.',
+    'auth/captcha-check-failed':      'reCAPTCHA failed. Ensure ashwani-panwar.github.io is in Firebase → Auth → Authorized Domains.',
+    'auth/app-not-authorized':        'App not authorised. Add ashwani-panwar.github.io to Firebase → Auth → Authorized Domains.',
+    'auth/operation-not-allowed':     'Phone sign-in not enabled. Enable it in Firebase → Auth → Sign-in method.',
+    'auth/missing-phone-number':      'Enter a phone number first.',
+    'auth/user-disabled':             'This account has been disabled.',
+    'auth/invalid-email':             'Invalid email address.',
+    'auth/wrong-password':            'Wrong password.',
+    'auth/user-not-found':            'No account found. Check your email.',
+  };
+  return MAP[err.code] || err.message || 'Something went wrong. Please try again.';
 }
 
 function loginSendEmailLink() {
@@ -1930,11 +1973,25 @@ function loginSendEmailLink() {
 }
 
 function loginWithGoogle() {
-  if (!_auth) { showLoginError('Auth not ready. Check Firebase config.'); return; }
   document.getElementById('loginError').style.display = 'none';
+  // Visual feedback — button text changes while redirect is in progress
+  const btn = document.querySelector('#loginPanelGoogle button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to Google…'; }
+
   const provider = new firebase.auth.GoogleAuthProvider();
+  provider.addScope('profile');
+  provider.addScope('email');
   provider.addScope('https://www.googleapis.com/auth/drive.file');
-  _auth.signInWithRedirect(provider);
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  // signInWithRedirect is the only flow that works inside Android WebView
+  // (popups are blocked by the system).  The Firebase auth handler at
+  // vitalcore-6e029.firebaseapp.com/__/auth/handler must be allowed in
+  // MainActivity.java's shouldOverrideUrlLoading — this is now done.
+  _auth.signInWithRedirect(provider).catch(err => {
+    showLoginError(_authCodeToMsg(err));
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; }
+  });
 }
 
 function checkEmailSignInLink() {
