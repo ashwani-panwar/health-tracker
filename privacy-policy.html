@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy Policy — VitalCore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #ffffff0f;
+    --accent: #c8ff00;
+    --accent2: #00ffc8;
+    --text: #f0f0f5;
+    --text2: #8888aa;
+    --text3: #555570;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+  .back-link {
+    font-size: 12px;
+    color: var(--text2);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 20px;
+    transition: all 0.2s;
+  }
+  .back-link:hover { border-color: var(--accent); color: var(--accent); }
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  .page-badge {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    color: var(--text2);
+    font-size: 13px;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  .section:hover { border-color: var(--border2, #ffffff18); }
+  .section-num {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+  p { color: var(--text2); font-size: 13px; margin-bottom: 12px; }
+  p:last-child { margin-bottom: 0; }
+  ul { list-style: none; padding: 0; }
+  ul li {
+    color: var(--text2);
+    font-size: 13px;
+    padding: 6px 0 6px 20px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  ul li:last-child { border-bottom: none; }
+  ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+  }
+  .highlight-box {
+    background: linear-gradient(135deg, rgba(200,255,0,0.05), rgba(0,255,200,0.03));
+    border: 1px solid rgba(200,255,0,0.2);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .highlight-box p { color: var(--text); font-size: 13px; margin: 0; }
+  .contact-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    text-align: center;
+    margin-top: 40px;
+  }
+  .contact-box h3 { font-family: 'Syne', sans-serif; font-size: 16px; margin-bottom: 8px; }
+  .contact-box p { font-size: 12px; }
+  .contact-box a { color: var(--accent2); text-decoration: none; }
+  .footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 24px;
+    text-align: center;
+  }
+  .footer p { font-size: 11px; color: var(--text3); }
+  .footer a { color: var(--text2); text-decoration: none; margin: 0 12px; }
+  .footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a class="logo" href="index.html">
+    <svg width="24" height="24" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="13" cy="13" r="12" stroke="#c8ff00" stroke-width="1.2" opacity="0.35"/>
+      <path d="M3 13h4l2.5-5.5L13 19l3-8.5 2 4.5H23" stroke="#c8ff00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    VITAL<span>CORE</span>
+  </a>
+  <a class="back-link" href="index.html">← Back to App</a>
+</header>
+
+<main class="container">
+  <div class="page-badge">Legal</div>
+  <h1>Privacy <span>Policy</span></h1>
+  <p class="subtitle">Last updated: May 27, 2026 &nbsp;·&nbsp; Effective: May 27, 2026</p>
+
+  <div class="highlight-box">
+    <p>VitalCore is built with a <strong>privacy-first, offline-first</strong> philosophy. Your health data stays on your device by default. We do not sell, share, or monetize your personal health information.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-num">01</span>
+    <h2>Information We Collect</h2>
+    <p>VitalCore collects only the information necessary to provide the health tracking service. This includes:</p>
+    <ul>
+      <li>Account information (name, email address) when you sign in via Google Authentication</li>
+      <li>Health data you voluntarily enter: meals, exercise logs, activity records, nutrition data</li>
+      <li>Body metrics: weight, height, age, fitness goals you set within the app</li>
+      <li>OCR-scanned food labels processed entirely on your device (not sent to servers)</li>
+      <li>Google Fit data if you authorize the integration (read-only access)</li>
+      <li>Google Drive backup data if you enable cloud backup (stored in your own Drive)</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-num">02</span>
+    <h2>How We Use Your Information</h2>
+    <p>Your data is used exclusively for:</p>
+    <ul>
+      <li>Displaying your personalized health dashboard and progress insights</li>
+      <li>Calculating nutrition totals, calorie intake, and fitness metrics</li>
+      <li>Syncing data with Google Fit (only with your explicit authorization)</li>
+      <li>Backing up your data to Google Drive (only when you initiate a backup)</li>
+      <li>Maintaining your session and authentication state via Firebase Auth</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-num">03</span>
+    <h2>Data Storage &amp; Security</h2>
+    <p>VitalCore is an <strong>offline-first Progressive Web App (PWA)</strong>. The majority of your data is stored locally using browser localStorage and IndexedDB on your device.</p>
+    <ul>
+      <li>Health data is stored locally on your device — not on our servers</li>
+      <li>Authentication is handled securely by Google Firebase Auth</li>
+      <li>Cloud backups go directly to your personal Google Drive account</li>
+      <li>Google Fit sync uses OAuth 2.0 tokens that you can revoke at any time</li>
+      <li>All data transmissions use HTTPS/TLS encryption</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-num">04</span>
+    <h2>Third-Party Services</h2>
+    <p>VitalCore integrates with the following third-party services, each governed by their own privacy policies:</p>
+    <ul>
+      <li><strong>Google Firebase Authentication</strong> — for secure sign-in (Google Privacy Policy applies)</li>
+      <li><strong>Google Fit API</strong> — optional fitness data sync (requires your explicit authorization)</li>
+      <li><strong>Google Drive API</strong> — optional data backup to your personal Drive</li>
+      <li><strong>Google Fonts</strong> — font delivery (no personal data shared)</li>
+      <li><strong>Tesseract.js</strong> — OCR processing runs entirely client-side on your device</li>
+    </ul>
+    <p>We do not share your health data with any advertisers, data brokers, or other third parties.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-num">05</span>
+    <h2>Health Data &amp; Sensitive Information</h2>
+    <p>We treat your health information with the highest level of care. VitalCore does not transmit health metrics, nutrition logs, or body measurements to any external servers beyond the integrations you explicitly enable.</p>
+    <ul>
+      <li>Health data remains on your device unless you enable Google Drive backup</li>
+      <li>We do not process, analyze, or monetize your health information</li>
+      <li>OCR food scanning is performed locally via Tesseract.js — no images are uploaded</li>
+      <li>You can delete all your local data at any time via Settings → Data Management</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-num">06</span>
+    <h2>Your Rights &amp; Choices</h2>
+    <p>You have full control over your data:</p>
+    <ul>
+      <li><strong>Access:</strong> View all your stored data directly in the app</li>
+      <li><strong>Export:</strong> Export your health data as JSON via Settings</li>
+      <li><strong>Delete:</strong> Clear all local data at any time via Settings → Clear Data</li>
+      <li><strong>Revoke Access:</strong> Remove Google Fit or Drive permissions via your Google Account settings</li>
+      <li><strong>Account Deletion:</strong> Delete your Firebase Auth account from the app's profile settings</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-num">07</span>
+    <h2>Children's Privacy</h2>
+    <p>VitalCore is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe a child has provided us with personal information, please contact us immediately so we can remove it.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-num">08</span>
+    <h2>Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. When we make significant changes, we will update the "Last updated" date at the top of this page. We encourage you to review this policy periodically. Continued use of VitalCore after changes constitutes your acceptance of the revised policy.</p>
+  </div>
+
+  <div class="contact-box">
+    <h3>Questions about your privacy?</h3>
+    <p>If you have any questions, concerns, or requests regarding this Privacy Policy or your personal data, please reach out to us.</p>
+    <p style="margin-top:12px;"><a href="mailto:privacy@vitalcore.app">privacy@vitalcore.app</a></p>
+  </div>
+</main>
+
+<footer class="footer">
+  <p>
+    <a href="index.html">VitalCore App</a>
+    <a href="privacy-policy.html">Privacy Policy</a>
+    <a href="terms-of-service.html">Terms of Service</a>
+  </p>
+  <p style="margin-top:10px;">© 2026 VitalCore. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
