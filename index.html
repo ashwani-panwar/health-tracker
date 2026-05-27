@@ -5063,5 +5063,24 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 </script>
+
+<!-- Legal Footer - Privacy Policy & Terms of Service Links -->
+<footer id="legal-footer" style="
+  background: #111118;
+  border-top: 1px solid #ffffff0f;
+  padding: 16px 20px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #555570;
+  position: relative;
+  z-index: 10;
+">
+  <div style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap;align-items:center;">
+    <span style="color:#8888aa;">© 2026 VitalCore</span>
+    <a href="privacy-policy.html" style="color:#8888aa;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#c8ff00'" onmouseout="this.style.color='#8888aa'">Privacy Policy</a>
+    <a href="terms-of-service.html" style="color:#8888aa;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#c8ff00'" onmouseout="this.style.color='#8888aa'">Terms of Service</a>
+  </div>
+</footer>
 </body>
 </html>
