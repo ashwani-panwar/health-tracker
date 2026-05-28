@@ -1077,14 +1077,27 @@
       </div>
     </div>
 
-    <!-- Email magic-link panel -->
+    <!-- Email + password panel -->
     <div id="loginPanelEmail" style="display:none">
-      <div style="font-size:10px;color:var(--text3);margin-bottom:8px">We'll send a sign-in link to your email</div>
-      <input id="loginEmailInput" type="email" placeholder="you@example.com" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:12px"/>
-      <button onclick="loginSendEmailLink()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;cursor:pointer">Send Sign-in Link →</button>
-      <div id="loginEmailSent" style="display:none;margin-top:16px;padding:14px;background:rgba(200,255,0,0.08);border:1px solid rgba(200,255,0,0.2);border-radius:10px;font-size:11px;color:var(--accent);text-align:center;line-height:1.6">
-        ✓ Link sent! Check your inbox and tap the link to sign in.<br/>
-        <span style="color:var(--text3);font-size:10px">You can close this tab after clicking the link.</span>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:10px;letter-spacing:0.3px">
+        Sign in with email &amp; password
+      </div>
+      <input id="loginEmailInput" type="email" inputmode="email" autocomplete="email"
+        placeholder="you@example.com"
+        style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:8px;box-sizing:border-box;outline:none"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"
+        onkeydown="if(event.key==='Enter')document.getElementById('loginPasswordInput').focus()"/>
+      <input id="loginPasswordInput" type="password" autocomplete="current-password"
+        placeholder="Password (min 6 characters)"
+        style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:12px;box-sizing:border-box;outline:none"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"
+        onkeydown="if(event.key==='Enter')loginWithEmail()"/>
+      <button id="loginEmailBtn" onclick="loginWithEmail()"
+        style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;cursor:pointer;touch-action:manipulation">
+        Sign In →
+      </button>
+      <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">
+        No account? One will be created automatically.
       </div>
     </div>
 
@@ -1959,73 +1972,127 @@ function _authCodeToMsg(err) {
   return MAP[err.code] || err.message || 'Something went wrong. Please try again.';
 }
 
-function loginSendEmailLink() {
-  if (!_auth) { showLoginError('Auth not ready. Check Firebase config.'); return; }
-  const email = document.getElementById('loginEmailInput').value.trim();
-  if (!email.includes('@')) { showLoginError('Enter a valid email address.'); return; }
+// ── Email / password sign-in (creates account automatically if new) ──
+async function loginWithEmail() {
+  const email = (document.getElementById('loginEmailInput')?.value  || '').trim();
+  const pwd   =  document.getElementById('loginPasswordInput')?.value || '';
+
+  if (!email || !email.includes('@')) { showLoginError('Enter a valid email address.'); return; }
+  if (pwd.length < 6) { showLoginError('Password must be at least 6 characters.'); return; }
+
+  const btn = document.getElementById('loginEmailBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
   document.getElementById('loginError').style.display = 'none';
-  _auth.sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true })
-    .then(() => {
-      localStorage.setItem('emailForSignIn', email);
-      document.getElementById('loginEmailSent').style.display = 'block';
-    })
-    .catch(err => showLoginError(err.message || 'Failed to send link.'));
+
+  try {
+    await _auth.signInWithEmailAndPassword(email, pwd);
+    // onAuthStateChanged will call showMainApp()
+  } catch (err) {
+    if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+      // New user — create account
+      try {
+        if (btn) btn.textContent = 'Creating account…';
+        await _auth.createUserWithEmailAndPassword(email, pwd);
+      } catch (e2) {
+        showLoginError(_authCodeToMsg(e2));
+        if (btn) { btn.disabled = false; btn.textContent = 'Sign In →'; }
+      }
+    } else {
+      showLoginError(_authCodeToMsg(err));
+      if (btn) { btn.disabled = false; btn.textContent = 'Sign In →'; }
+    }
+  }
 }
 
 function loginWithGoogle() {
   document.getElementById('loginError').style.display = 'none';
-  // Visual feedback — button text changes while redirect is in progress
   const btn = document.querySelector('#loginPanelGoogle button');
-  if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to Google…'; }
 
+  // ── Android WebView path ──────────────────────────────────────────
+  // Google explicitly blocks OAuth in embedded WebViews (their policy).
+  // We use a native Android Google Sign-In flow exposed via a
+  // JavascriptInterface. The result comes back through
+  // window._nativeGoogleSignIn(idToken, email, name, photoUrl).
+  if (window.AndroidGoogleAuth) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Opening Google…'; }
+    try {
+      window.AndroidGoogleAuth.signIn();
+    } catch (e) {
+      showLoginError('Native sign-in unavailable: ' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; }
+    }
+    return;
+  }
+
+  // ── Web browser path ─────────────────────────────────────────────
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.addScope('profile');
   provider.addScope('email');
-  provider.addScope('https://www.googleapis.com/auth/drive.file');
   provider.setCustomParameters({ prompt: 'select_account' });
-
-  // signInWithRedirect is the only flow that works inside Android WebView
-  // (popups are blocked by the system).  The Firebase auth handler at
-  // vitalcore-6e029.firebaseapp.com/__/auth/handler must be allowed in
-  // MainActivity.java's shouldOverrideUrlLoading — this is now done.
   _auth.signInWithRedirect(provider).catch(err => {
     showLoginError(_authCodeToMsg(err));
     if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; }
   });
 }
 
-function checkEmailSignInLink() {
-  if (!_auth || !_auth.isSignInWithEmailLink(window.location.href)) return;
-  let email = localStorage.getItem('emailForSignIn');
-  if (!email) email = window.prompt('Confirm your email:');
-  if (email) {
-    _auth.signInWithEmailLink(email, window.location.href)
-      .then(() => {
-        localStorage.removeItem('emailForSignIn');
-        window.history.replaceState({}, document.title, window.location.pathname);
-      })
-      .catch(err => console.warn('Email link sign-in failed:', err.message));
-  }
-}
+// ── Callbacks from Android native Google Sign-In bridge ────────────
+
+window._nativeGoogleSignIn = function(idToken, email, name, photoUrl) {
+  if (!idToken) { showLoginError('Google sign-in failed — no token received.'); return; }
+  const credential = firebase.auth.GoogleAuthProvider.credential(idToken);
+  _auth.signInWithCredential(credential)
+    .catch(err => {
+      showLoginError(_authCodeToMsg(err));
+      const btn = document.querySelector('#loginPanelGoogle button');
+      if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; }
+    });
+  // onAuthStateChanged handles showMainApp() on success
+};
+
+window._nativeGoogleSignInError = function(errMsg) {
+  const btn = document.querySelector('#loginPanelGoogle button');
+  if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; }
+  if (!errMsg || errMsg === 'null') return; // user cancelled
+  showLoginError('Google sign-in failed: ' + errMsg);
+};
+
+// checkEmailSignInLink removed — email auth now uses email + password,
+// which works without redirects or deep-link handling.
 
 function initFirebaseAuth() {
-  if (!_auth) { showMainApp(); return; }
-
-  _auth.getRedirectResult().then(result => {
-    if (result && result.credential) {
-      const token = result.credential.accessToken;
-      if (token && window.S && S.settings) {
-        S.settings.driveToken       = token;
-        S.settings.driveTokenExpiry = Date.now() + 3600 * 1000;
-        save(S);
+  // ── Handle the return from a web Google sign-in redirect ──────────
+  // Must be called before onAuthStateChanged so the user object is
+  // available when the listener fires.
+  _auth.getRedirectResult()
+    .then(result => {
+      if (!result || !result.user) return;
+      // Also capture Drive access token if scope was granted
+      if (result.credential && result.credential.accessToken) {
+        const token = result.credential.accessToken;
+        if (window.S && S.settings) {
+          S.settings.driveToken       = token;
+          S.settings.driveTokenExpiry = Date.now() + 3600 * 1000;
+          save(S);
+        }
       }
-    }
-  }).catch(err => console.warn('Redirect result:', err.message));
+      // onAuthStateChanged will call showMainApp() — no need to do it here
+    })
+    .catch(err => {
+      // Ignore the benign "no pending redirect" error
+      if (err.code !== 'auth/no-auth-event') {
+        console.warn('getRedirectResult:', err.code, err.message);
+        showLoginError(_authCodeToMsg(err));
+      }
+    });
 
-  checkEmailSignInLink();
-
+  // ── Auth-state listener: single source of truth ──────────────────
   _auth.onAuthStateChanged(user => {
-    if (user) showMainApp(); else showLoginScreenUI();
+    if (user) {
+      showMainApp();
+    } else {
+      showLoginScreenUI();
+    }
   });
 }
 
