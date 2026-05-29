@@ -1664,10 +1664,11 @@
         <div id="llmProviderSection">
           <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">AI Provider <span style="color:var(--accent);font-weight:700">(Food Photo Detection)</span></div>
           <!-- Provider chips -->
-          <div style="display:flex;gap:6px;margin-bottom:10px" id="llmProviderChips">
-            <button onclick="selectLLMProvider('groq')" id="provBtn-groq" class="btn btn-primary" style="flex:1;font-size:10px;padding:9px 4px">Groq</button>
-            <button onclick="selectLLMProvider('gemini')" id="provBtn-gemini" class="btn btn-secondary" style="flex:1;font-size:10px;padding:9px 4px">Gemini</button>
-            <button onclick="selectLLMProvider('openrouter')" id="provBtn-openrouter" class="btn btn-secondary" style="flex:1;font-size:10px;padding:9px 4px">OpenRouter</button>
+          <div style="display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap" id="llmProviderChips">
+            <button onclick="selectLLMProvider('groq')" id="provBtn-groq" class="btn btn-primary" style="flex:1;font-size:9px;padding:8px 2px;min-width:60px">Groq</button>
+            <button onclick="selectLLMProvider('gemini')" id="provBtn-gemini" class="btn btn-secondary" style="flex:1;font-size:9px;padding:8px 2px;min-width:60px">Gemini</button>
+            <button onclick="selectLLMProvider('openrouter')" id="provBtn-openrouter" class="btn btn-secondary" style="flex:1;font-size:9px;padding:8px 2px;min-width:60px">OpenRouter</button>
+            <button onclick="selectLLMProvider('offline')" id="provBtn-offline" class="btn btn-secondary" style="flex:1;font-size:9px;padding:8px 2px;min-width:60px">Offline</button>
           </div>
           <!-- Dynamic key area — filled by renderLLMProviderUI() -->
           <div id="llmKeyArea"></div>
@@ -1967,6 +1968,7 @@ function _authCodeToMsg(err) {
     'auth/too-many-requests':         'Too many attempts. Please wait a moment.',
     'auth/quota-exceeded':            'SMS quota exceeded. Try email sign-in.',
     'auth/network-request-failed':    'Network error. Check your connection.',
+    'auth/internal-error':            'Firebase setup needed — go to console.firebase.google.com → Authentication → Sign-in method → Phone → Enable. Also add ashwani-panwar.github.io to Authorized Domains.',
     'auth/captcha-check-failed':      'reCAPTCHA failed. Ensure ashwani-panwar.github.io is in Firebase → Auth → Authorized Domains.',
     'auth/app-not-authorized':        'App not authorised. Add ashwani-panwar.github.io to Firebase → Auth → Authorized Domains.',
     'auth/operation-not-allowed':     'Phone sign-in not enabled. Enable it in Firebase → Auth → Sign-in method.',
@@ -2123,7 +2125,22 @@ const GDRIVE_BACKUP_FILENAME = 'vitalcore-backup.json';
 async function backupToGoogleDrive() {
   const token  = S.settings && S.settings.driveToken;
   const expiry = S.settings && S.settings.driveTokenExpiry;
-  if (!token || Date.now() > expiry) { launchDriveOAuth(); return; }
+  const valid  = token && expiry && Date.now() < expiry;
+
+  if (valid) { await _executeDriveBackup(token); return; }
+
+  // Native Android: get Drive token silently via existing Google Sign-In (no browser)
+  if (window.isNativeApp && typeof vitalCoreNative !== 'undefined' && vitalCoreNative.requestDriveToken) {
+    showToast('Connecting to Drive...');
+    vitalCoreNative.requestDriveToken();
+    return;
+  }
+
+  // Web fallback
+  launchDriveOAuth();
+}
+
+async function _executeDriveBackup(token) {
   await uploadToDrive(token);
 }
 
@@ -3772,10 +3789,40 @@ function renderGfitStatus() {
   }
 }
 
+// ── Native Android callbacks for fitness / drive tokens ──────────
+// These are called by MainActivity.java via evaluateJavascript after
+// the user grants fitness/drive scopes through the native Google permission dialog.
+window._nativeFitnessToken = function(token) {
+  if (!S.settings) S.settings = defaultState().settings;
+  S.settings.gfitToken       = token;
+  S.settings.gfitTokenExpiry = Date.now() + 3500 * 1000; // ~1 hr
+  save(S);
+  renderAll();
+  renderGfitStatus();
+  showToast('Google Fit connected ✓ Syncing...');
+  syncGoogleFit(token);
+};
+window._nativeFitnessError = function(msg) {
+  showToast('Fit: ' + msg);
+  renderGfitStatus();
+};
+window._nativeDriveToken = function(token) {
+  if (!S.settings) S.settings = defaultState().settings;
+  S.settings.driveToken       = token;
+  S.settings.driveTokenExpiry = Date.now() + 3500 * 1000;
+  save(S);
+  _executeDriveBackup(token);
+};
+window._nativeDriveError = function(msg) {
+  const el = document.getElementById('driveBackupStatus');
+  if (el) { el.style.display='block'; el.style.background='rgba(255,68,102,0.1)';
+    el.style.color='var(--red)'; el.textContent='✗ ' + msg; }
+};
+
 function connectGoogleFit() {
   const token   = S.settings && S.settings.gfitToken;
   const expiry  = S.settings && S.settings.gfitTokenExpiry;
-  const expired = expiry && Date.now() > expiry;
+  const expired = !expiry || Date.now() > expiry;
 
   // Already connected and valid — sync directly
   if (token && !expired) {
@@ -3783,37 +3830,33 @@ function connectGoogleFit() {
     return;
   }
 
-  // Resolve Client ID: hardcoded > saved in settings
-  const clientId = GFIT_HARDCODED_ID || (S.settings && S.settings.gfitClientId);
-
-  if (!clientId) {
-    showGfitSignInModal();
+  // Native Android: use Google Sign-In SDK to get a fitness token without any browser
+  // The native bridge handles silent re-auth and shows a native permission dialog only
+  // when fitness scopes are being requested for the first time.
+  if (window.isNativeApp && typeof vitalCoreNative !== 'undefined' && vitalCoreNative.requestFitnessToken) {
+    showToast('Requesting fitness access...');
+    vitalCoreNative.requestFitnessToken();
     return;
   }
 
+  // Web fallback: OAuth implicit flow via redirect / popup
+  const clientId = GFIT_HARDCODED_ID || (S.settings && S.settings.gfitClientId);
+  if (!clientId) { showGfitSignInModal(); return; }
+
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if (isMobile && expired) {
-    // Expired token on mobile — silent iframe refresh avoids navigating the WebView away
     showToast('Refreshing Google session...');
     silentRefreshGfitIframe(clientId)
       .then(({ token: newToken, expiresIn }) => {
         if (!S.settings) S.settings = defaultState().settings;
         S.settings.gfitToken       = newToken;
         S.settings.gfitTokenExpiry = Date.now() + (expiresIn * 1000);
-        save(S);
-        renderGfitStatus();
-        showToast('Google Fit reconnected ✓ Syncing...');
+        save(S); renderGfitStatus(); showToast('Google Fit reconnected ✓ Syncing...');
         syncGoogleFit(newToken);
       })
-      .catch(() => {
-        // Google session also expired — must do full interactive sign-in
-        showToast('Please sign in with Google again...');
-        launchGfitOAuth(clientId, false);
-      });
+      .catch(() => { showToast('Please sign in with Google again...'); launchGfitOAuth(clientId, false); });
     return;
   }
-
-  // First-time sign-in on mobile, or desktop: go straight to interactive OAuth
   launchGfitOAuth(clientId, false);
 }
 
@@ -4610,6 +4653,7 @@ function getLLMProvider() {
 }
 function getLLMKey(provider) {
   if (!provider) provider = getLLMProvider();
+  if (provider === 'offline')    return 'offline'; // no key needed
   if (provider === 'groq')       return S.settings && S.settings.groqApiKey;
   if (provider === 'gemini')     return S.settings && S.settings.geminiApiKey;
   if (provider === 'openrouter') return S.settings && S.settings.openrouterApiKey;
@@ -4640,6 +4684,12 @@ const LLM_INFO = {
     placeholder: 'sk-or-...',
     hint: '🆓 Free models available · Get key at <b>openrouter.ai</b> → Keys',
     model: 'Llama 3.2 11B vision (free)'
+  },
+  offline: {
+    label: 'Offline (On-Device)',
+    placeholder: '',
+    hint: '📴 No internet needed · Runs MobileNet in browser · ~10 MB model (loads once, cached) · Works without any API key',
+    model: 'MobileNet food classifier'
   }
 };
 
@@ -4649,7 +4699,7 @@ function renderLLMProviderUI() {
   const key  = getLLMKey(provider);
 
   // Update chip styles
-  ['groq','gemini','openrouter'].forEach(p => {
+  ['groq','gemini','openrouter','offline'].forEach(p => {
     const btn = document.getElementById('provBtn-' + p);
     if (!btn) return;
     if (p === provider) {
@@ -4664,6 +4714,15 @@ function renderLLMProviderUI() {
   // Render key area
   const area = document.getElementById('llmKeyArea');
   if (!area) return;
+
+  if (provider === 'offline') {
+    area.innerHTML = `<div style="font-size:9px;color:var(--accent2);padding:8px 10px;background:rgba(0,255,200,0.07);border:1px solid rgba(0,255,200,0.2);border-radius:7px;margin-bottom:6px;line-height:1.6">
+      ✓ ${info.model} — no API key needed<br/>
+      <span style="color:var(--text3)">${info.hint}</span>
+    </div>`;
+    return;
+  }
+
   area.innerHTML = key
     ? `<div style="font-size:9px;color:var(--accent);padding:6px 8px;background:rgba(200,255,0,0.07);border:1px solid rgba(200,255,0,0.2);border-radius:7px;margin-bottom:6px">
          ✓ ${info.label} key active — ${info.model} ready
@@ -5137,10 +5196,140 @@ async function callLLMVision(file, prompt) {
   const provider = getLLMProvider();
   const key = getLLMKey(provider);
   if (!key) throw new Error('NO_KEY');
+  if (provider === 'offline')    return callOfflineVision(file, prompt);
   if (provider === 'groq')       return callGroqVision(file, prompt);
   if (provider === 'gemini')     return callGeminiVision(file, prompt, key);
   if (provider === 'openrouter') return callOpenRouterVision(file, prompt, key);
   throw new Error('Unknown provider: ' + provider);
+}
+
+// ─── OFFLINE vision — TF.js MobileNet + local nutrition DB ───────
+// No API key, no internet once model is cached (~10 MB, loaded once).
+let _tfModel = null;
+
+function _loadScript(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+async function _loadTFModel() {
+  if (_tfModel) return _tfModel;
+  await _loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js');
+  await _loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js');
+  _tfModel = await mobilenet.load({ version: 2, alpha: 1.0 });
+  return _tfModel;
+}
+
+function _fileToImageElement(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+
+// Maps MobileNet ImageNet labels → nutrition per 100 g (default portion estimate)
+const _FOOD_NUTRITION = {
+  'pizza':            {cal:266,prot:11,fat:10,carb:33,portion:'1 slice ~100g'},
+  'cheeseburger':     {cal:303,prot:17,fat:14,carb:26,portion:'1 burger ~130g'},
+  'hot dog':          {cal:290,prot:10,fat:17,carb:23,portion:'1 hot dog ~100g'},
+  'french fries':     {cal:312,prot:3,fat:15,carb:41,portion:'medium fries ~115g'},
+  'fried chicken':    {cal:327,prot:27,fat:21,carb:11,portion:'1 piece ~150g'},
+  'hamburger':        {cal:295,prot:15,fat:14,carb:27,portion:'1 burger ~130g'},
+  'submarine sandwich':{cal:228,prot:12,fat:4,carb:36,portion:'6-inch ~200g'},
+  'banana':           {cal:89,prot:1,fat:0,carb:23,portion:'1 medium ~118g'},
+  'apple':            {cal:52,prot:0,fat:0,carb:14,portion:'1 medium ~182g'},
+  'orange':           {cal:47,prot:1,fat:0,carb:12,portion:'1 medium ~131g'},
+  'strawberry':       {cal:32,prot:1,fat:0,carb:8,portion:'1 cup ~152g'},
+  'lemon':            {cal:29,prot:1,fat:0,carb:9,portion:'1 fruit ~58g'},
+  'pineapple':        {cal:50,prot:1,fat:0,carb:13,portion:'1 cup ~165g'},
+  'mango':            {cal:60,prot:1,fat:0,carb:15,portion:'1 cup ~165g'},
+  'watermelon':       {cal:30,prot:1,fat:0,carb:8,portion:'2 cups ~280g'},
+  'broccoli':         {cal:34,prot:3,fat:0,carb:7,portion:'1 cup ~91g'},
+  'cucumber':         {cal:16,prot:1,fat:0,carb:4,portion:'1 cup ~119g'},
+  'corn':             {cal:86,prot:3,fat:1,carb:19,portion:'1 ear ~103g'},
+  'mushroom':         {cal:22,prot:3,fat:0,carb:3,portion:'1 cup ~70g'},
+  'pretzel':          {cal:380,prot:9,fat:4,carb:80,portion:'1 oz ~28g'},
+  'bagel':            {cal:245,prot:10,fat:1,carb:48,portion:'1 bagel ~98g'},
+  'bread':            {cal:265,prot:9,fat:3,carb:49,portion:'2 slices ~60g'},
+  'croissant':        {cal:406,prot:8,fat:21,carb:46,portion:'1 medium ~57g'},
+  'waffle':           {cal:291,prot:8,fat:11,carb:40,portion:'1 waffle ~75g'},
+  'pancake':          {cal:227,prot:6,fat:10,carb:28,portion:'2 pancakes ~150g'},
+  'ice cream':        {cal:207,prot:4,fat:11,carb:24,portion:'1 scoop ~100g'},
+  'chocolate cake':   {cal:352,prot:4,fat:15,carb:50,portion:'1 slice ~90g'},
+  'donut':            {cal:452,prot:5,fat:25,carb:51,portion:'1 glazed ~60g'},
+  'cookie':           {cal:480,prot:5,fat:24,carb:64,portion:'2 cookies ~50g'},
+  'espresso':         {cal:3,prot:0,fat:0,carb:0,portion:'1 shot ~30ml'},
+  'coffee':           {cal:5,prot:0,fat:0,carb:1,portion:'1 cup ~240ml'},
+  'cup':              {cal:5,prot:0,fat:0,carb:1,portion:'1 cup ~240ml'},
+  'pop bottle':       {cal:150,prot:0,fat:0,carb:39,portion:'1 can ~355ml'},
+  'wine bottle':      {cal:125,prot:0,fat:0,carb:4,portion:'1 glass ~150ml'},
+  'beer bottle':      {cal:153,prot:1,fat:0,carb:13,portion:'1 bottle ~355ml'},
+  'egg':              {cal:155,prot:13,fat:11,carb:1,portion:'2 eggs ~100g'},
+  'meat loaf':        {cal:211,prot:13,fat:13,carb:10,portion:'1 slice ~100g'},
+  'sushi':            {cal:143,prot:6,fat:3,carb:23,portion:'6 pieces ~150g'},
+  'pot pie':          {cal:260,prot:8,fat:14,carb:26,portion:'1 slice ~180g'},
+  'rice':             {cal:130,prot:3,fat:0,carb:28,portion:'1 cup cooked ~186g'},
+  'pasta':            {cal:158,prot:6,fat:1,carb:31,portion:'1 cup cooked ~140g'},
+  'soup bowl':        {cal:80,prot:4,fat:2,carb:11,portion:'1 bowl ~245g'},
+  'salad':            {cal:20,prot:2,fat:0,carb:4,portion:'1 cup ~50g'},
+  'burrito':          {cal:290,prot:11,fat:9,carb:40,portion:'1 medium ~170g'},
+  'taco':             {cal:226,prot:11,fat:11,carb:20,portion:'2 tacos ~130g'},
+  'samosa':           {cal:262,prot:5,fat:13,carb:33,portion:'2 pieces ~100g'},
+  'biryani':          {cal:173,prot:9,fat:5,carb:24,portion:'1 cup ~200g'},
+  'dal':              {cal:116,prot:8,fat:3,carb:14,portion:'1 cup ~200g'},
+  'roti':             {cal:297,prot:8,fat:4,carb:56,portion:'2 rotis ~70g'},
+  'idli':             {cal:39,prot:2,fat:0,carb:8,portion:'2 idlis ~80g'},
+  'dosa':             {cal:168,prot:4,fat:6,carb:25,portion:'1 dosa ~100g'},
+  'paneer':           {cal:265,prot:18,fat:20,carb:3,portion:'100g'},
+  'chicken curry':    {cal:170,prot:17,fat:9,carb:6,portion:'1 cup ~200g'},
+  'milk':             {cal:61,prot:3,fat:3,carb:5,portion:'1 glass ~244ml'},
+  'yogurt':           {cal:61,prot:5,fat:3,carb:5,portion:'1 cup ~245g'},
+  'cheese':           {cal:402,prot:25,fat:33,carb:1,portion:'2 slices ~50g'},
+  'almond':           {cal:579,prot:21,fat:50,carb:22,portion:'20 almonds ~28g'},
+  'peanut butter':    {cal:588,prot:25,fat:50,carb:20,portion:'2 tbsp ~32g'},
+};
+
+// Find best nutrition match from MobileNet predictions
+function _mapToFoodItems(predictions) {
+  const items = [];
+  for (const pred of predictions) {
+    const label = pred.className.toLowerCase();
+    // Direct match
+    for (const [key, val] of Object.entries(_FOOD_NUTRITION)) {
+      if (label.includes(key) || key.includes(label.split(',')[0].trim())) {
+        const portion = val.portion;
+        const factor  = parseFloat(portion.match(/~(\d+)/)?.[1] || '100') / 100;
+        items.push({
+          food: pred.className.split(',')[0],
+          portion: val.portion,
+          cal: Math.round(val.cal * factor),
+          prot: Math.round(val.prot * factor)
+        });
+        break;
+      }
+    }
+    if (items.length >= 3) break;
+  }
+  return items.length ? items : [{food: predictions[0]?.className?.split(',')[0] || 'Food item', portion:'1 serving', cal:250, prot:8}];
+}
+
+async function callOfflineVision(file /*, prompt unused */) {
+  try {
+    const model = await _loadTFModel();
+    const img   = await _fileToImageElement(file);
+    const preds = await model.classify(img, 10);
+    const items = _mapToFoodItems(preds);
+    return JSON.stringify(items);
+  } catch(e) {
+    throw new Error('Offline model error: ' + e.message);
+  }
 }
 
 async function callGeminiVision(file, prompt, key) {
