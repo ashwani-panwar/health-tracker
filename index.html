@@ -828,7 +828,8 @@
     body.theme-lively #tab-activity::before,
     body.theme-lively #tab-body::before,
     body.theme-lively #tab-history::before,
-    body.theme-lively #tab-coach::before {
+    body.theme-lively #tab-coach::before,
+    body.theme-lively #tab-workout::before {
       content: '';
       position: fixed;
       inset: 0;
@@ -860,6 +861,9 @@
     }
     body.theme-lively #tab-coach.active::before {
       background-image: url('https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=800&q=60');
+    }
+    body.theme-lively #tab-workout.active::before {
+      background-image: url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=60');
     }
 
     /* Lively cards get glass effect */
@@ -1041,72 +1045,103 @@
       min-width: 50px;
       text-align: center;
     }
+
+    /* Workout chips */
+    .w-chip {
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text2);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .w-chip.w-chip-sel {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+      font-weight: 700;
+    }
+    .w-intens {
+      flex: 1;
+      padding: 9px 6px;
+      border-radius: 10px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text2);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .w-intens.w-intens-sel {
+      background: var(--accent2);
+      border-color: var(--accent2);
+      color: #000;
+      font-weight: 700;
+    }
+    .gym-set-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .gym-set-row:last-child { border-bottom: none; }
+    .workout-log-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .workout-log-row:last-child { border-bottom: none; }
   </style>
 </head>
 <body>
 
 <!-- ══════════════════════════════════════════════ LOGIN SCREEN ══ -->
-<div id="loginScreen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:100000;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto">
-  <div style="width:100%;max-width:380px">
-    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:var(--accent);margin-bottom:4px;text-align:center">VITAL<span style="color:var(--text)">CORE</span></div>
-    <div style="font-size:11px;color:var(--text3);text-align:center;letter-spacing:1px;margin-bottom:32px;text-transform:uppercase">Your health, your data</div>
+<style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .login-spinner {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 3px solid rgba(200,255,0,0.15);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+</style>
+<div id="loginScreen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:100000;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto">
+  <div style="width:100%;max-width:360px;text-align:center">
 
-    <!-- Tabs -->
-    <div style="display:flex;gap:4px;background:var(--surface2);border-radius:12px;padding:4px;margin-bottom:24px">
-      <button id="loginTabPhone" onclick="switchLoginTab('phone')" style="flex:1;padding:9px;border:none;border-radius:9px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s;background:var(--accent);color:#000;font-weight:700">📱 Phone</button>
-      <button id="loginTabEmail" onclick="switchLoginTab('email')" style="flex:1;padding:9px;border:none;border-radius:9px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text3)">✉ Email</button>
-      <button id="loginTabGoogle" onclick="switchLoginTab('google')" style="flex:1;padding:9px;border:none;border-radius:9px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text3)">G Google</button>
+    <!-- Loading state — shown while Firebase restores auth -->
+    <div id="loginLoading" style="display:flex;flex-direction:column;align-items:center;gap:18px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:32px;color:var(--accent);letter-spacing:-1px">VITAL<span style="color:var(--text)">CORE</span></div>
+      <div class="login-spinner"></div>
+      <div style="font-size:11px;color:var(--text3);letter-spacing:0.5px">Checking sign-in…</div>
     </div>
 
-    <!-- Phone OTP panel -->
-    <div id="loginPanelPhone">
-      <div id="loginPhoneStep1">
-        <div style="font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:0.5px">Enter your mobile number</div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <input id="loginPhoneCountry" type="text" value="+91" style="width:60px;padding:12px 8px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;text-align:center"/>
-          <input id="loginPhoneInput" type="tel" placeholder="98765 43210" style="flex:1;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px"/>
-        </div>
-        <div id="recaptchaContainer"></div>
-        <button onclick="loginSendOTP()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;cursor:pointer;margin-top:8px">Send OTP →</button>
+    <!-- Sign-in content — revealed only after Firebase confirms no user -->
+    <div id="loginContent" style="display:none">
+      <!-- Logo -->
+      <div style="margin-bottom:8px">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="26" cy="26" r="24" stroke="#c8ff00" stroke-width="1.5" opacity="0.25"/><path d="M6 26h7l5-12 6 24 6-18 4 9 3-3H46" stroke="#c8ff00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div id="loginPhoneStep2" style="display:none">
-        <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Enter the 6-digit code sent to <span id="loginPhoneDisplay" style="color:var(--accent)"></span></div>
-        <input id="loginOTPInput" type="number" placeholder="• • • • • •" maxlength="6" style="width:100%;padding:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:20px;text-align:center;letter-spacing:8px;margin-bottom:12px"/>
-        <button onclick="loginVerifyOTP()" style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;cursor:pointer">Verify &amp; Sign In →</button>
-        <button onclick="document.getElementById('loginPhoneStep1').style.display='';document.getElementById('loginPhoneStep2').style.display='none'" style="width:100%;padding:10px;background:transparent;border:none;color:var(--text3);font-size:10px;cursor:pointer;margin-top:8px">← Change number</button>
-      </div>
-    </div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:30px;color:var(--accent);letter-spacing:-1px;margin-bottom:6px">VITAL<span style="color:var(--text)">CORE</span></div>
+      <div style="font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Your health, your data</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:36px;line-height:1.6">Track nutrition, workouts, and body metrics.<br/>Sync across devices with Google.</div>
 
-    <!-- Email + password panel -->
-    <div id="loginPanelEmail" style="display:none">
-      <div style="font-size:10px;color:var(--text3);margin-bottom:10px;letter-spacing:0.3px">
-        Sign in with email &amp; password
-      </div>
-      <input id="loginEmailInput" type="email" inputmode="email" autocomplete="email"
-        placeholder="you@example.com"
-        style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:8px;box-sizing:border-box;outline:none"
-        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"
-        onkeydown="if(event.key==='Enter')document.getElementById('loginPasswordInput').focus()"/>
-      <input id="loginPasswordInput" type="password" autocomplete="current-password"
-        placeholder="Password (min 6 characters)"
-        style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;margin-bottom:12px;box-sizing:border-box;outline:none"
-        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'"
-        onkeydown="if(event.key==='Enter')loginWithEmail()"/>
-      <button id="loginEmailBtn" onclick="loginWithEmail()"
-        style="width:100%;padding:14px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;cursor:pointer;touch-action:manipulation">
-        Sign In →
+      <!-- Google Sign-in button -->
+      <button id="googleSignInBtn" onclick="loginWithGoogle()" style="width:100%;padding:15px 20px;background:#fff;color:#3c4043;border:none;border-radius:12px;font-family:'Roboto',sans-serif;font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,0.15);transition:box-shadow 0.2s" onmouseover="this.style.boxShadow='0 4px 20px rgba(0,0,0,0.25)'" onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.15)'">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continue with Google
       </button>
-      <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">
-        No account? One will be created automatically.
-      </div>
-    </div>
 
-    <!-- Google Sign-in panel -->
-    <div id="loginPanelGoogle" style="display:none">
-      <button onclick="loginWithGoogle()" style="width:100%;padding:14px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:10px;font-family:'Roboto',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px">
-        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-        Sign in with Google
-      </button>
+      <div style="font-size:10px;color:var(--text3);margin-top:20px;line-height:1.6">
+        By signing in you agree to our <a href="privacy-policy.html" style="color:var(--text2)">Privacy Policy</a>
+      </div>
     </div>
 
     <div id="loginError" style="display:none;margin-top:16px;padding:12px;background:rgba(255,68,102,0.1);border:1px solid rgba(255,68,102,0.3);border-radius:10px;font-size:11px;color:var(--red);text-align:center"></div>
@@ -1127,8 +1162,10 @@
     <button class="nav-tab active" onclick="showTab('dashboard')">Overview</button>
     <button class="nav-tab" onclick="showTab('log')">Log Food</button>
     <button class="nav-tab" onclick="showTab('activity')">Activity</button>
+    <button class="nav-tab" onclick="showTab('workout')">Workout</button>
     <button class="nav-tab" onclick="showTab('body')">Body</button>
     <button class="nav-tab" onclick="showTab('history')">History</button>
+    <button class="nav-tab" onclick="showTab('coach')">Coach</button>
   </div>
 
   <!-- CONTENT -->
@@ -1746,6 +1783,127 @@
       <div id="coachContent" style="padding: 16px 0 80px"></div>
     </div>
 
+    <!-- ======================== WORKOUT ======================== -->
+    <div id="tab-workout" class="page">
+      <div style="padding:16px 0 100px">
+
+        <!-- Mode toggle -->
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button id="wMode-cardio" onclick="setWorkoutMode('cardio')"
+            style="flex:1;padding:12px;border:none;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;background:var(--accent);color:#000;transition:all 0.2s">
+            🏃 Cardio</button>
+          <button id="wMode-gym" onclick="setWorkoutMode('gym')"
+            style="flex:1;padding:12px;border:none;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;background:var(--surface2);color:var(--text3);border:1px solid var(--border);transition:all 0.2s">
+            🏋 Gym / Weights</button>
+        </div>
+
+        <!-- CARDIO PANEL -->
+        <div id="wPanel-cardio">
+          <div class="card">
+            <div class="card-label">Activity</div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:8px" id="cardioChips">
+              <button class="w-chip w-chip-sel" data-act="Walk"    onclick="selectCardioActivity('Walk')">🚶 Walk</button>
+              <button class="w-chip"             data-act="Run"     onclick="selectCardioActivity('Run')">🏃 Run</button>
+              <button class="w-chip"             data-act="Cycle"   onclick="selectCardioActivity('Cycle')">🚴 Cycle</button>
+              <button class="w-chip"             data-act="Yoga"    onclick="selectCardioActivity('Yoga')">🧘 Yoga</button>
+              <button class="w-chip"             data-act="HIIT"    onclick="selectCardioActivity('HIIT')">🔥 HIIT</button>
+              <button class="w-chip"             data-act="Swim"    onclick="selectCardioActivity('Swim')">🏊 Swim</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:10px">
+            <div class="card-label">Duration &amp; Intensity</div>
+            <div style="display:flex;gap:10px;margin-top:10px;align-items:center">
+              <div style="flex:1">
+                <input id="cardioDuration" type="number" placeholder="Minutes" min="1" max="480"
+                  class="input-field" style="width:100%" oninput="updateCalorieBurn()"/>
+                <div style="font-size:9px;color:var(--text3);margin-top:3px">duration (min)</div>
+              </div>
+              <div style="flex:1">
+                <input id="cardioDistance" type="number" placeholder="km (optional)" min="0" step="0.1"
+                  class="input-field" style="width:100%"/>
+                <div style="font-size:9px;color:var(--text3);margin-top:3px">distance (km)</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:10px">
+              <button class="w-intens w-intens-sel" data-int="light"    onclick="selectIntensity('light')">💧 Light</button>
+              <button class="w-intens"               data-int="moderate" onclick="selectIntensity('moderate')">🔸 Moderate</button>
+              <button class="w-intens"               data-int="intense"  onclick="selectIntensity('intense')">🔥 Intense</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:10px;background:rgba(200,255,0,0.06);border-color:rgba(200,255,0,0.2)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="card-label" style="color:var(--accent)">Estimated Calories Burned</div>
+                <div id="cardioBurnEst" style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent);margin-top:4px">— kcal</div>
+                <div id="cardioBurnMeta" style="font-size:9px;color:var(--text3);margin-top:2px"></div>
+              </div>
+              <div style="font-size:36px" id="cardioActivityIcon">🚶</div>
+            </div>
+          </div>
+
+          <button onclick="logCardioActivity()" class="btn btn-primary" style="width:100%;padding:15px;margin-top:12px;font-size:14px">
+            Log Activity ✓
+          </button>
+        </div>
+
+        <!-- GYM PANEL -->
+        <div id="wPanel-gym" style="display:none">
+          <div class="card">
+            <div class="card-label">Muscle Group</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px" id="muscleGroupChips">
+              <button class="w-chip w-chip-sel" data-mg="all"       onclick="selectMuscleGroup('all')">All</button>
+              <button class="w-chip"             data-mg="chest"     onclick="selectMuscleGroup('chest')">Chest</button>
+              <button class="w-chip"             data-mg="back"      onclick="selectMuscleGroup('back')">Back</button>
+              <button class="w-chip"             data-mg="legs"      onclick="selectMuscleGroup('legs')">Legs</button>
+              <button class="w-chip"             data-mg="shoulders" onclick="selectMuscleGroup('shoulders')">Shoulders</button>
+              <button class="w-chip"             data-mg="arms"      onclick="selectMuscleGroup('arms')">Arms</button>
+              <button class="w-chip"             data-mg="core"      onclick="selectMuscleGroup('core')">Core</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:10px">
+            <div class="card-label">Add Exercise</div>
+            <select id="gymExerciseSelect" class="input-field" style="width:100%;margin-top:8px;margin-bottom:10px">
+              <option value="">— Select exercise —</option>
+            </select>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="flex:1">
+                <input id="gymWeight" type="number" placeholder="Weight" class="input-field" style="width:100%" min="0" step="0.5"/>
+                <div style="font-size:9px;color:var(--text3);margin-top:3px">kg (0 = bodyweight)</div>
+              </div>
+              <div style="flex:1">
+                <input id="gymReps" type="number" placeholder="Reps" class="input-field" style="width:100%" min="1" max="200"/>
+                <div style="font-size:9px;color:var(--text3);margin-top:3px">reps</div>
+              </div>
+              <button onclick="addGymSet()" class="btn btn-primary" style="padding:12px 14px;white-space:nowrap">＋ Set</button>
+            </div>
+          </div>
+
+          <!-- Current session log -->
+          <div id="gymSessionLog" style="display:none" class="card" style="margin-top:10px">
+            <div class="card-label">Current Session <span id="gymSetCount" style="color:var(--accent)"></span></div>
+            <div id="gymSessionEntries" style="margin-top:8px"></div>
+            <button onclick="finishGymSession()" class="btn btn-primary" style="width:100%;margin-top:12px;padding:14px">
+              Finish &amp; Save Session ✓
+            </button>
+          </div>
+        </div>
+
+        <!-- Today's workout log -->
+        <div class="card" style="margin-top:16px">
+          <div class="card-label">Today's Workout Log
+            <span id="workoutTotalBurn" style="float:right;color:var(--accent3);font-weight:700"></span>
+          </div>
+          <div id="workoutLogEntries" style="margin-top:8px">
+            <div style="font-size:11px;color:var(--text3);text-align:center;padding:16px 0">No workouts logged today</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div><!-- /content -->
 
   <!-- BOTTOM NAV -->
@@ -1762,6 +1920,10 @@
       <div class="nav-icon">⚡</div>
       <div class="nav-label">Move</div>
     </div>
+    <div class="nav-item" id="nav-workout" onclick="showPage('workout')">
+      <div class="nav-icon">🏋</div>
+      <div class="nav-label">Workout</div>
+    </div>
     <div class="nav-item" id="nav-body" onclick="showPage('body')">
       <div class="nav-icon">◈</div>
       <div class="nav-label">Body</div>
@@ -1769,10 +1931,6 @@
     <div class="nav-item" id="nav-history" onclick="showPage('history')">
       <div class="nav-icon">≡</div>
       <div class="nav-label">History</div>
-    </div>
-    <div class="nav-item" id="nav-coach" onclick="showPage('coach')">
-      <div class="nav-icon">💡</div>
-      <div class="nav-label">Coach</div>
     </div>
   </nav>
 
@@ -2015,7 +2173,7 @@ async function loginWithEmail() {
 
 function loginWithGoogle() {
   document.getElementById('loginError').style.display = 'none';
-  const btn = document.querySelector('#loginPanelGoogle button');
+  const btn = document.getElementById('googleSignInBtn');
 
   // ── Android WebView path ──────────────────────────────────────────
   // Google explicitly blocks OAuth in embedded WebViews (their policy).
@@ -2028,7 +2186,7 @@ function loginWithGoogle() {
       window.AndroidGoogleAuth.signIn();
     } catch (e) {
       showLoginError('Native sign-in unavailable: ' + e.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Continue with Google'; }
     }
     return;
   }
@@ -2041,7 +2199,7 @@ function loginWithGoogle() {
   provider.setCustomParameters({ prompt: 'select_account' });
   _auth.signInWithRedirect(provider).catch(err => {
     showLoginError(_authCodeToMsg(err));
-    if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue with Google'; }
   });
 }
 
@@ -2053,15 +2211,15 @@ window._nativeGoogleSignIn = function(idToken, email, name, photoUrl) {
   _auth.signInWithCredential(credential)
     .catch(err => {
       showLoginError(_authCodeToMsg(err));
-      const btn = document.querySelector('#loginPanelGoogle button');
-      if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; }
+      const btn = document.getElementById('googleSignInBtn');
+      if (btn) { btn.disabled = false; btn.textContent = 'Continue with Google'; }
     });
   // onAuthStateChanged handles showMainApp() on success
 };
 
 window._nativeGoogleSignInError = function(errMsg) {
-  const btn = document.querySelector('#loginPanelGoogle button');
-  if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; }
+  const btn = document.getElementById('googleSignInBtn');
+  if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google'; }
   if (!errMsg || errMsg === 'null') return; // user cancelled
   showLoginError('Google sign-in failed: ' + errMsg);
 };
@@ -2070,6 +2228,12 @@ window._nativeGoogleSignInError = function(errMsg) {
 // which works without redirects or deep-link handling.
 
 function initFirebaseAuth() {
+  // Show loading spinner immediately — loginScreen starts visible but with
+  // spinner only. The Google sign-in button is revealed only after Firebase
+  // confirms there is no current session, preventing a flash for returning users.
+  document.getElementById('loginLoading').style.display = 'flex';
+  document.getElementById('loginContent').style.display = 'none';
+
   // ── Handle the return from a web Google sign-in redirect ──────────
   // Must be called before onAuthStateChanged so the user object is
   // available when the listener fires.
@@ -2085,10 +2249,8 @@ function initFirebaseAuth() {
           save(S);
         }
       }
-      // onAuthStateChanged will call showMainApp() — no need to do it here
     })
     .catch(err => {
-      // Ignore the benign "no pending redirect" error
       if (err.code !== 'auth/no-auth-event') {
         console.warn('getRedirectResult:', err.code, err.message);
         showLoginError(_authCodeToMsg(err));
@@ -2100,6 +2262,7 @@ function initFirebaseAuth() {
     if (user) {
       showMainApp();
     } else {
+      // No current session — show the sign-in button now
       showLoginScreenUI();
     }
   });
@@ -2113,6 +2276,9 @@ function showMainApp() {
 function showLoginScreenUI() {
   document.getElementById('app').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
+  // Hide spinner, reveal Google button
+  document.getElementById('loginLoading').style.display = 'none';
+  document.getElementById('loginContent').style.display = 'block';
 }
 
 function signOut() {
@@ -2245,6 +2411,8 @@ function cleanupFloats(state) {
   if (state.today) {
     state.today.calories = Math.round(state.today.calories || 0);
     state.today.protein  = r1(state.today.protein || 0);
+    // Ensure workoutLog exists (older stored state won't have it)
+    if (!state.today.workoutLog) state.today.workoutLog = [];
     if (state.today.meals) {
       state.today.meals = state.today.meals.map(m => ({
         ...m,
@@ -2252,6 +2420,11 @@ function cleanupFloats(state) {
         prot: r1(m.prot || 0)
       }));
     }
+  }
+  // Migrate settings defaults for existing users
+  if (state.settings) {
+    if (!state.settings.theme)       state.settings.theme = 'lively';
+    if (!state.settings.llmProvider) state.settings.llmProvider = 'offline';
   }
   return state;
 }
@@ -2274,6 +2447,7 @@ function defaultState() {
       workoutDone: false,
       workoutType: null,
       workoutDuration: null,
+      workoutLog: [],
       meals: [],
       scored: false,
       score: null,
@@ -2286,6 +2460,8 @@ function defaultState() {
     settings: {
       proteinTarget: 105, calorieTarget: 2000, stepsTarget: 7000,
       fatTarget: 60, carbTarget: 200,
+      theme: 'lively',
+      llmProvider: 'offline',
       profile: { name: '', age: null, gender: null, height: null, weight: null, goalWeight: null, activityLevel: 'moderate' }
     }
   };
@@ -2395,6 +2571,7 @@ function renderAll() {
   renderHistory();
   renderProfile();
   renderCoach();
+  renderWorkout();
 }
 
 function renderHeader() {
@@ -3683,15 +3860,16 @@ function setTheme(mode) {
 }
 
 function applyStoredTheme() {
-  const mode = S.settings && S.settings.theme || 'dark';
+  const mode = S.settings && S.settings.theme || 'lively';
   document.body.classList.remove('theme-light','theme-auto','theme-lively');
-  if (mode === 'light')  document.body.classList.add('theme-light');
+  if (mode === 'light')       document.body.classList.add('theme-light');
   else if (mode === 'auto')   document.body.classList.add('theme-auto');
   else if (mode === 'lively') document.body.classList.add('theme-lively');
+  // 'dark' = no class added (default :root vars)
 }
 
 function renderThemeButtons() {
-  const mode = S.settings && S.settings.theme || 'dark';
+  const mode = S.settings && S.settings.theme || 'lively';
   ['dark','light','auto','lively'].forEach(m => {
     const btn = document.getElementById(`themeBtn-${m}`);
     if (!btn) return;
@@ -4649,7 +4827,7 @@ function renderApiKeyStatus() { renderLLMProviderUI(); }
 
 // ── LLM provider helpers ──────────────────────────────────────────
 function getLLMProvider() {
-  return (S.settings && S.settings.llmProvider) || 'groq';
+  return (S.settings && S.settings.llmProvider) || 'offline';
 }
 function getLLMKey(provider) {
   if (!provider) provider = getLLMProvider();
@@ -5478,6 +5656,285 @@ function showApiKeyPrompt() {
   setTimeout(() => {
     document.getElementById('apiKeySection')?.scrollIntoView({ behavior: 'smooth' });
   }, 300);
+}
+
+// ═══════════════════════════════════════════
+//  WORKOUT TAB
+// ═══════════════════════════════════════════
+
+// ── Exercise database ──
+const GYM_EXERCISES = {
+  chest:     ['Bench Press','Incline Bench Press','Decline Bench Press','Dumbbell Fly','Incline Dumbbell Fly','Cable Crossover','Push-Up','Wide Push-Up','Chest Dips'],
+  back:      ['Pull-Up','Chin-Up','Lat Pulldown','Seated Cable Row','Barbell Bent-Over Row','Dumbbell Row','T-Bar Row','Deadlift','Face Pull','Straight-Arm Pulldown'],
+  legs:      ['Barbell Squat','Goblet Squat','Leg Press','Romanian Deadlift','Leg Curl','Leg Extension','Calf Raise','Standing Calf Raise','Lunges','Bulgarian Split Squat','Hack Squat'],
+  shoulders: ['Overhead Press','Dumbbell Shoulder Press','Arnold Press','Lateral Raise','Front Raise','Rear Delt Fly','Upright Row','Shrugs','Cable Lateral Raise'],
+  arms:      ['Barbell Bicep Curl','Dumbbell Bicep Curl','Hammer Curl','Preacher Curl','Concentration Curl','Tricep Pushdown','Skull Crushers','Overhead Tricep Extension','Tricep Kickback','Close-Grip Bench','Dips'],
+  core:      ['Plank','Side Plank','Crunches','Bicycle Crunch','Russian Twist','Leg Raise','Hanging Leg Raise','Ab Wheel Rollout','Cable Crunch','Mountain Climbers','V-Ups']
+};
+
+// MET values: {activity: {light, moderate, intense}}
+const CARDIO_MET = {
+  Walk:  { light: 2.5, moderate: 3.5, intense: 4.5 },
+  Run:   { light: 6.0, moderate: 8.5, intense: 11.0 },
+  Cycle: { light: 4.0, moderate: 6.0, intense: 8.5 },
+  Yoga:  { light: 2.0, moderate: 2.5, intense: 3.5 },
+  HIIT:  { light: 7.5, moderate: 10.0, intense: 12.5 },
+  Swim:  { light: 4.5, moderate: 6.5, intense: 9.0 },
+};
+const CARDIO_ICONS = { Walk:'🚶', Run:'🏃', Cycle:'🚴', Yoga:'🧘', HIIT:'🔥', Swim:'🏊' };
+
+// ── State ──
+let _wMode = 'cardio';
+let _wCardioActivity = 'Walk';
+let _wIntensity = 'light';
+let _wGymGroup = 'all';
+let _wGymSession = {}; // { 'Bench Press': [{weight, reps}, ...], ... }
+
+function setWorkoutMode(mode) {
+  _wMode = mode;
+  document.getElementById('wPanel-cardio').style.display = mode === 'cardio' ? '' : 'none';
+  document.getElementById('wPanel-gym').style.display    = mode === 'gym'    ? '' : 'none';
+  const cardioBtn = document.getElementById('wMode-cardio');
+  const gymBtn    = document.getElementById('wMode-gym');
+  if (mode === 'cardio') {
+    cardioBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:12px;font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;cursor:pointer;background:var(--accent);color:#000;transition:all 0.2s';
+    gymBtn.style.cssText    = 'flex:1;padding:12px;border:none;border-radius:12px;font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;cursor:pointer;background:var(--surface2);color:var(--text3);border:1px solid var(--border);transition:all 0.2s';
+  } else {
+    gymBtn.style.cssText    = 'flex:1;padding:12px;border:none;border-radius:12px;font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;cursor:pointer;background:var(--accent);color:#000;transition:all 0.2s';
+    cardioBtn.style.cssText = 'flex:1;padding:12px;border:none;border-radius:12px;font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;cursor:pointer;background:var(--surface2);color:var(--text3);border:1px solid var(--border);transition:all 0.2s';
+    renderGymExerciseSelect();
+  }
+}
+
+function selectCardioActivity(act) {
+  _wCardioActivity = act;
+  document.querySelectorAll('#cardioChips .w-chip').forEach(b => {
+    b.classList.toggle('w-chip-sel', b.dataset.act === act);
+  });
+  const iconEl = document.getElementById('cardioActivityIcon');
+  if (iconEl) iconEl.textContent = CARDIO_ICONS[act] || '🏃';
+  updateCalorieBurn();
+}
+
+function selectIntensity(level) {
+  _wIntensity = level;
+  document.querySelectorAll('.w-intens').forEach(b => {
+    b.classList.toggle('w-intens-sel', b.dataset.int === level);
+  });
+  updateCalorieBurn();
+}
+
+function updateCalorieBurn() {
+  const durEl = document.getElementById('cardioDuration');
+  const estEl = document.getElementById('cardioBurnEst');
+  const metaEl = document.getElementById('cardioBurnMeta');
+  if (!durEl || !estEl) return;
+  const dur = parseFloat(durEl.value) || 0;
+  if (dur <= 0) { estEl.textContent = '— kcal'; if (metaEl) metaEl.textContent = ''; return; }
+  const met = (CARDIO_MET[_wCardioActivity] || CARDIO_MET.Walk)[_wIntensity] || 3.5;
+  const weight = (S.settings && S.settings.profile && S.settings.profile.weight) || 70;
+  const kcal = Math.round(met * weight * (dur / 60));
+  estEl.textContent = kcal + ' kcal';
+  if (metaEl) metaEl.textContent = `${_wCardioActivity} · ${_wIntensity} · ${Math.round(weight)}kg · MET ${met}`;
+}
+
+function logCardioActivity() {
+  const dur = parseInt(document.getElementById('cardioDuration').value) || 0;
+  if (dur <= 0) { showToast('Enter duration first'); return; }
+  const met = (CARDIO_MET[_wCardioActivity] || CARDIO_MET.Walk)[_wIntensity] || 3.5;
+  const weight = (S.settings && S.settings.profile && S.settings.profile.weight) || 70;
+  const kcal = Math.round(met * weight * (dur / 60));
+  const dist = parseFloat(document.getElementById('cardioDistance').value) || null;
+
+  if (!S.today.workoutLog) S.today.workoutLog = [];
+  S.today.workoutLog.push({
+    type: 'cardio',
+    activity: _wCardioActivity,
+    icon: CARDIO_ICONS[_wCardioActivity] || '🏃',
+    duration: dur,
+    intensity: _wIntensity,
+    distance: dist,
+    calories: kcal,
+    ts: Date.now()
+  });
+
+  // Update legacy fields for dashboard compat
+  S.today.workoutDone     = true;
+  S.today.workoutType     = _wCardioActivity;
+  S.today.workoutDuration = (S.today.workoutDuration || 0) + dur;
+  S.today.activityCals    = (S.today.activityCals || 0) + kcal;
+
+  save(S);
+  renderAll();
+
+  // Reset form
+  document.getElementById('cardioDuration').value  = '';
+  document.getElementById('cardioDistance').value  = '';
+  document.getElementById('cardioBurnEst').textContent = '— kcal';
+  showToast(`${CARDIO_ICONS[_wCardioActivity]} ${_wCardioActivity} logged — ${kcal} kcal burned ✓`);
+}
+
+// ── Gym ──
+function selectMuscleGroup(group) {
+  _wGymGroup = group;
+  document.querySelectorAll('#muscleGroupChips .w-chip').forEach(b => {
+    b.classList.toggle('w-chip-sel', b.dataset.mg === group);
+  });
+  renderGymExerciseSelect();
+}
+
+function renderGymExerciseSelect() {
+  const sel = document.getElementById('gymExerciseSelect');
+  if (!sel) return;
+  const all = _wGymGroup === 'all'
+    ? Object.values(GYM_EXERCISES).flat()
+    : (GYM_EXERCISES[_wGymGroup] || []);
+  sel.innerHTML = '<option value="">— Select exercise —</option>' +
+    all.map(e => `<option value="${e}">${e}</option>`).join('');
+}
+
+function addGymSet() {
+  const ex     = document.getElementById('gymExerciseSelect').value;
+  const weight = parseFloat(document.getElementById('gymWeight').value) || 0;
+  const reps   = parseInt(document.getElementById('gymReps').value) || 0;
+  if (!ex)   { showToast('Select an exercise'); return; }
+  if (reps < 1) { showToast('Enter reps'); return; }
+
+  if (!_wGymSession[ex]) _wGymSession[ex] = [];
+  _wGymSession[ex].push({ weight, reps });
+
+  // Reset inputs for next set
+  document.getElementById('gymWeight').value = '';
+  document.getElementById('gymReps').value   = '';
+
+  renderGymSessionLog();
+  showToast(`Set added: ${ex} ${weight > 0 ? weight + 'kg × ' : ''}${reps} reps`);
+}
+
+function renderGymSessionLog() {
+  const logDiv  = document.getElementById('gymSessionLog');
+  const entries = document.getElementById('gymSessionEntries');
+  const count   = document.getElementById('gymSetCount');
+  if (!logDiv || !entries) return;
+
+  const exNames = Object.keys(_wGymSession);
+  if (exNames.length === 0) { logDiv.style.display = 'none'; return; }
+
+  logDiv.style.display = '';
+  let totalSets = 0;
+  entries.innerHTML = exNames.map(ex => {
+    const sets = _wGymSession[ex];
+    totalSets += sets.length;
+    return `<div style="margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px">${ex}</div>
+      ${sets.map((s, i) => `
+        <div class="gym-set-row">
+          <span style="color:var(--text3)">Set ${i + 1}</span>
+          <span style="color:var(--text)">${s.weight > 0 ? s.weight + ' kg' : 'bodyweight'} × ${s.reps} reps</span>
+          <button onclick="removeGymSet('${ex}',${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+  if (count) count.textContent = `(${totalSets} set${totalSets !== 1 ? 's' : ''})`;
+}
+
+function removeGymSet(ex, idx) {
+  if (!_wGymSession[ex]) return;
+  _wGymSession[ex].splice(idx, 1);
+  if (_wGymSession[ex].length === 0) delete _wGymSession[ex];
+  renderGymSessionLog();
+}
+
+function finishGymSession() {
+  const exNames = Object.keys(_wGymSession);
+  if (exNames.length === 0) { showToast('Add at least one set'); return; }
+
+  const totalSets = exNames.reduce((n, ex) => n + _wGymSession[ex].length, 0);
+  const exercises = exNames.map(ex => ({ name: ex, sets: [..._wGymSession[ex]] }));
+
+  if (!S.today.workoutLog) S.today.workoutLog = [];
+  S.today.workoutLog.push({
+    type: 'gym',
+    exercises,
+    totalSets,
+    ts: Date.now()
+  });
+
+  // Update dashboard compat fields
+  S.today.workoutDone = true;
+  S.today.workoutType = 'Gym';
+  S.today.workoutDuration = (S.today.workoutDuration || 0);
+
+  save(S);
+  _wGymSession = {};
+  renderGymSessionLog();
+  renderAll();
+  showToast(`💪 Gym session saved — ${exNames.length} exercise${exNames.length !== 1 ? 's' : ''}, ${totalSets} sets ✓`);
+}
+
+function deleteWorkoutEntry(idx) {
+  if (!S.today.workoutLog) return;
+  const entry = S.today.workoutLog[idx];
+  S.today.workoutLog.splice(idx, 1);
+  // Subtract burned cals if cardio
+  if (entry && entry.type === 'cardio' && entry.calories) {
+    S.today.activityCals = Math.max(0, (S.today.activityCals || 0) - entry.calories);
+  }
+  if (S.today.workoutLog.length === 0) {
+    S.today.workoutDone = false;
+    S.today.workoutType = null;
+  }
+  save(S);
+  renderAll();
+}
+
+function renderWorkout() {
+  const logDiv = document.getElementById('workoutLogEntries');
+  if (!logDiv) return;
+
+  const entries = (S.today && S.today.workoutLog) || [];
+  if (entries.length === 0) {
+    logDiv.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:16px 0">No workouts logged today</div>';
+    const burnEl = document.getElementById('workoutTotalBurn');
+    if (burnEl) burnEl.textContent = '';
+    return;
+  }
+
+  let totalBurn = 0;
+  logDiv.innerHTML = entries.map((e, i) => {
+    if (e.type === 'cardio') {
+      totalBurn += e.calories || 0;
+      const dist = e.distance ? ` · ${e.distance}km` : '';
+      return `<div class="workout-log-row">
+        <div style="font-size:24px;flex-shrink:0">${e.icon || '🏃'}</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;color:var(--text)">${e.activity}</div>
+          <div style="font-size:10px;color:var(--text3)">${e.duration} min · ${e.intensity}${dist}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:13px;font-weight:700;color:var(--accent3)">−${e.calories} kcal</div>
+          <button onclick="deleteWorkoutEntry(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0">remove</button>
+        </div>
+      </div>`;
+    } else if (e.type === 'gym') {
+      const exNames = (e.exercises || []).map(ex => ex.name).join(', ');
+      return `<div class="workout-log-row">
+        <div style="font-size:24px;flex-shrink:0">🏋</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;color:var(--text)">Gym Session</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">${e.totalSets} sets · ${exNames}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;color:var(--text2)">weights</div>
+          <button onclick="deleteWorkoutEntry(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0">remove</button>
+        </div>
+      </div>`;
+    }
+    return '';
+  }).join('');
+
+  const burnEl = document.getElementById('workoutTotalBurn');
+  if (burnEl) burnEl.textContent = totalBurn > 0 ? `🔥 ${totalBurn} kcal burned` : '';
 }
 
 // ─── LOAD EXTERNAL SCRIPTS ───
