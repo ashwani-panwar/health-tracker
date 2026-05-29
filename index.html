@@ -1660,24 +1660,22 @@
           </div>
         </div>
         <div class="divider"></div>
-        <!-- Groq API Key for photo food detection + body OCR -->
-        <div id="apiKeySection">
-          <div class="toggle-row" style="margin-bottom:4px">
-            <div class="toggle-label">Groq API Key <span style="font-size:8px;color:var(--accent)">(FREE — food photos + body scan)</span></div>
+        <!-- Multi-LLM provider for food photo detection -->
+        <div id="llmProviderSection">
+          <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">AI Provider <span style="color:var(--accent);font-weight:700">(Food Photo Detection)</span></div>
+          <!-- Provider chips -->
+          <div style="display:flex;gap:6px;margin-bottom:10px" id="llmProviderChips">
+            <button onclick="selectLLMProvider('groq')" id="provBtn-groq" class="btn btn-primary" style="flex:1;font-size:10px;padding:9px 4px">Groq</button>
+            <button onclick="selectLLMProvider('gemini')" id="provBtn-gemini" class="btn btn-secondary" style="flex:1;font-size:10px;padding:9px 4px">Gemini</button>
+            <button onclick="selectLLMProvider('openrouter')" id="provBtn-openrouter" class="btn btn-secondary" style="flex:1;font-size:10px;padding:9px 4px">OpenRouter</button>
           </div>
+          <!-- Dynamic key area — filled by renderLLMProviderUI() -->
+          <div id="llmKeyArea"></div>
           <div id="apiKeyStatus" style="font-size:9px;margin-bottom:6px;padding:5px 8px;border-radius:6px;display:none"></div>
-          <div class="input-row" style="margin-bottom:4px">
-            <input class="input-field" id="apiKeyInput" type="password" placeholder="gsk_..." style="font-size:11px" />
-            <button class="btn btn-primary" onclick="saveApiKey()" style="white-space:nowrap;font-size:11px">SAVE</button>
-          </div>
-          <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;font-size:11px" onclick="testGroqKey()">🔬 Test Groq Key</button>
           <div id="groqTestResult" style="display:none;font-size:10px;padding:8px;border-radius:6px;margin-bottom:6px"></div>
-          <div style="font-size:9px;color:var(--text3);line-height:1.6">
-            🆓 <strong style="color:var(--accent)">100% Free</strong> — Get key at <strong>console.groq.com</strong> → API Keys → Create<br/>
-            No billing needed. 14,400 free requests/day. Llama 4 vision model.<br/>
-            Key stored locally on your device only, never sent anywhere else.
-          </div>
         </div>
+        <!-- legacy id kept for backward compat -->
+        <div id="apiKeySection" style="display:none"></div>
         <div class="divider"></div>
         <!-- App cache / version control -->
         <div style="margin-bottom:8px">
@@ -1904,31 +1902,40 @@ async function loginSendOTP() {
 
   try {
     // Always tear down the previous verifier before creating a fresh one.
-    // Reusing a stale verifier is the most common reason OTP silently fails.
     if (_recaptchaVerifier) {
       try { _recaptchaVerifier.clear(); } catch (_) {}
       _recaptchaVerifier = null;
     }
 
-    // Invisible reCAPTCHA — no UI challenge shown to the user.
-    // Requires ashwani-panwar.github.io in Firebase → Auth → Authorized Domains.
+    // Visible reCAPTCHA — user checks the box, then callback triggers the send.
+    // More reliable than invisible in Android WebView (invisible can fail silently).
     _recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptchaContainer', {
-      size: 'invisible',
-      callback: () => {},
-      'expired-callback': () => { _recaptchaVerifier = null; }
+      size: 'normal',
+      callback: async () => {
+        // reCAPTCHA solved — now send the SMS
+        try {
+          _phoneConfirmResult = await _auth.signInWithPhoneNumber(phone, _recaptchaVerifier);
+          document.getElementById('loginPhoneDisplay').textContent = phone;
+          document.getElementById('loginPhoneStep1').style.display = 'none';
+          document.getElementById('loginPhoneStep2').style.display = '';
+        } catch (err2) {
+          if (_recaptchaVerifier) { try { _recaptchaVerifier.clear(); } catch (_) {} _recaptchaVerifier = null; }
+          showLoginError(_authCodeToMsg(err2));
+          if (btn) { btn.disabled = false; btn.textContent = 'Send OTP →'; }
+        }
+      },
+      'expired-callback': () => {
+        _recaptchaVerifier = null;
+        if (btn) { btn.disabled = false; btn.textContent = 'Send OTP →'; }
+        showLoginError('reCAPTCHA expired — tap Send OTP again.');
+      }
     });
 
-    // Pre-render the token so it is ready when signInWithPhoneNumber is called
+    // Render shows the checkbox widget — user must tick it to trigger the callback above
     await _recaptchaVerifier.render();
-
-    _phoneConfirmResult = await _auth.signInWithPhoneNumber(phone, _recaptchaVerifier);
-
-    document.getElementById('loginPhoneDisplay').textContent = phone;
-    document.getElementById('loginPhoneStep1').style.display = 'none';
-    document.getElementById('loginPhoneStep2').style.display = '';
+    if (btn) { btn.disabled = false; btn.textContent = 'Tick the box above →'; }
 
   } catch (err) {
-    // Clear broken verifier so the next tap creates a clean one
     if (_recaptchaVerifier) { try { _recaptchaVerifier.clear(); } catch (_) {} _recaptchaVerifier = null; }
     showLoginError(_authCodeToMsg(err));
     if (btn) { btn.disabled = false; btn.textContent = 'Send OTP →'; }
@@ -4488,63 +4495,92 @@ function clearAllData() {
 }
 
 function saveApiKey() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if (!key) { showToast('Enter a Groq API key'); return; }
-  if (!key.startsWith('gsk_')) { showToast('Invalid key — Groq keys start with gsk_'); return; }
-  if (!S.settings) S.settings = defaultState().settings;
-  S.settings.groqApiKey = key;
-  save(S);
-  document.getElementById('apiKeyInput').value = '';
-  renderApiKeyStatus();
-  showToast('Groq key saved ✓ Photo detection enabled!');
+  // Legacy path — delegates to current provider save
+  saveLLMKey();
 }
 
-async function testGroqKey() {
-  const key = getGroqKey();
+function saveLLMKey() {
+  const provider = getLLMProvider();
+  const input = document.getElementById('llmKeyInput');
+  if (!input) return;
+  const key = input.value.trim();
+  if (!key) { showToast('Enter an API key'); return; }
+  if (!S.settings) S.settings = defaultState().settings;
+  if (provider === 'groq') {
+    if (!key.startsWith('gsk_')) { showToast('Groq keys start with gsk_'); return; }
+    S.settings.groqApiKey = key;
+  } else if (provider === 'gemini') {
+    S.settings.geminiApiKey = key;
+  } else if (provider === 'openrouter') {
+    S.settings.openrouterApiKey = key;
+  }
+  save(S);
+  input.value = '';
+  renderLLMProviderUI();
+  showToast('API key saved ✓ Food detection enabled!');
+}
+
+async function testGroqKey() { await testLLMKey(); }
+
+async function testLLMKey() {
+  const provider = getLLMProvider();
+  const key = getLLMKey(provider);
   const resultEl = document.getElementById('groqTestResult');
+  if (!resultEl) return;
   resultEl.style.display = 'block';
 
   if (!key) {
     resultEl.style.background = 'rgba(255,68,102,0.1)';
     resultEl.style.color = 'var(--red)';
-    resultEl.textContent = '✗ No key saved. Enter your Groq API key above first.';
+    resultEl.textContent = '✗ No key saved. Enter and save your API key first.';
     return;
   }
 
   resultEl.style.background = 'var(--surface2)';
   resultEl.style.color = 'var(--text2)';
-  resultEl.textContent = '⏳ Testing Groq key...';
+  resultEl.textContent = `⏳ Testing ${provider} key...`;
 
   try {
-    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-        messages: [{ role: 'user', content: 'Reply with just: OK' }],
-        max_tokens: 5
-      })
-    });
-
-    const data = await resp.json().catch(() => ({}));
-    if (resp.ok && data?.choices?.[0]?.message) {
-      S.settings.groqWorkingModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
-      save(S);
-      renderApiKeyStatus();
-      resultEl.style.background = 'rgba(200,255,0,0.08)';
-      resultEl.style.color = 'var(--accent)';
-      resultEl.innerHTML = `<div>✓ Groq key valid! Llama 4 Scout vision ready.</div>
-        <div style="font-size:9px;color:var(--text3);margin-top:4px">14,400 free requests/day — food photos + body scan enabled.</div>`;
-    } else {
-      const msg = data?.error?.message || `HTTP ${resp.status}`;
-      resultEl.style.background = 'rgba(255,68,102,0.1)';
-      resultEl.style.color = 'var(--red)';
-      resultEl.innerHTML = `<div>✗ ${msg}</div>
-        <div style="margin-top:6px;font-size:9px">Get a free key at <strong>console.groq.com</strong> → API Keys → Create API Key</div>`;
+    let ok = false, label = '';
+    if (provider === 'groq') {
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({ model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          messages: [{ role: 'user', content: 'Reply: OK' }], max_tokens: 5 })
+      });
+      const d = await resp.json().catch(() => ({}));
+      ok = resp.ok && !!d?.choices?.[0]?.message;
+      if (ok) { if (!S.settings) S.settings = defaultState().settings; S.settings.groqWorkingModel = 'meta-llama/llama-4-scout-17b-16e-instruct'; save(S); }
+      label = ok ? '✓ Groq key valid — Llama 4 Scout vision ready. 14,400 free req/day.'
+                 : `✗ ${d?.error?.message || 'HTTP ' + resp.status}`;
+    } else if (provider === 'gemini') {
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply: OK' }] }],
+            generationConfig: { maxOutputTokens: 5 } }) });
+      const d = await resp.json().catch(() => ({}));
+      ok = resp.ok && !!d?.candidates?.[0];
+      label = ok ? '✓ Gemini key valid — gemini-1.5-flash vision ready. Free: 15 req/min.'
+                 : `✗ ${d?.error?.message || 'HTTP ' + resp.status}`;
+    } else if (provider === 'openrouter') {
+      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`,
+          'HTTP-Referer': 'https://ashwani-panwar.github.io/health-tracker/', 'X-Title': 'VitalCore' },
+        body: JSON.stringify({ model: 'meta-llama/llama-3.2-11b-vision-instruct:free',
+          messages: [{ role: 'user', content: 'Reply: OK' }], max_tokens: 5 })
+      });
+      const d = await resp.json().catch(() => ({}));
+      ok = resp.ok && !!d?.choices?.[0]?.message;
+      label = ok ? '✓ OpenRouter key valid — Llama 3.2 vision free model ready.'
+                 : `✗ ${d?.error?.message || 'HTTP ' + resp.status}`;
     }
+    resultEl.style.background = ok ? 'rgba(200,255,0,0.08)' : 'rgba(255,68,102,0.1)';
+    resultEl.style.color     = ok ? 'var(--accent)' : 'var(--red)';
+    resultEl.textContent = label;
+    if (ok) renderLLMProviderUI();
   } catch(e) {
     resultEl.style.background = 'rgba(255,68,102,0.1)';
     resultEl.style.color = 'var(--red)';
@@ -4566,19 +4602,89 @@ async function forceRefreshApp() {
   }
 }
 
-function renderApiKeyStatus() {
-  const el = document.getElementById('apiKeyStatus');
-  if (!el) return;
-  const key = S.settings && S.settings.groqApiKey;
-  if (key) {
-    el.style.display = 'block';
-    el.style.background = 'rgba(200,255,0,0.08)';
-    el.style.color = 'var(--accent)';
-    el.style.border = '1px solid rgba(200,255,0,0.2)';
-    el.textContent = '✓ Groq key active — Llama 4 vision ready';
-  } else {
-    el.style.display = 'none';
+function renderApiKeyStatus() { renderLLMProviderUI(); }
+
+// ── LLM provider helpers ──────────────────────────────────────────
+function getLLMProvider() {
+  return (S.settings && S.settings.llmProvider) || 'groq';
+}
+function getLLMKey(provider) {
+  if (!provider) provider = getLLMProvider();
+  if (provider === 'groq')       return S.settings && S.settings.groqApiKey;
+  if (provider === 'gemini')     return S.settings && S.settings.geminiApiKey;
+  if (provider === 'openrouter') return S.settings && S.settings.openrouterApiKey;
+  return null;
+}
+function selectLLMProvider(provider) {
+  if (!S.settings) S.settings = defaultState().settings;
+  S.settings.llmProvider = provider;
+  save(S);
+  renderLLMProviderUI();
+}
+
+const LLM_INFO = {
+  groq: {
+    label: 'Groq (Free)',
+    placeholder: 'gsk_...',
+    hint: '🆓 100% Free · 14,400 req/day · Get key at <b>console.groq.com</b> → API Keys',
+    model: 'Llama 4 Scout vision'
+  },
+  gemini: {
+    label: 'Google Gemini (Free)',
+    placeholder: 'AIza...',
+    hint: '🆓 Free tier · 15 req/min · Get key at <b>aistudio.google.com</b> → Get API key',
+    model: 'gemini-1.5-flash vision'
+  },
+  openrouter: {
+    label: 'OpenRouter',
+    placeholder: 'sk-or-...',
+    hint: '🆓 Free models available · Get key at <b>openrouter.ai</b> → Keys',
+    model: 'Llama 3.2 11B vision (free)'
   }
+};
+
+function renderLLMProviderUI() {
+  const provider = getLLMProvider();
+  const info = LLM_INFO[provider] || LLM_INFO.groq;
+  const key  = getLLMKey(provider);
+
+  // Update chip styles
+  ['groq','gemini','openrouter'].forEach(p => {
+    const btn = document.getElementById('provBtn-' + p);
+    if (!btn) return;
+    if (p === provider) {
+      btn.className = 'btn btn-primary';
+      btn.style.cssText = 'flex:1;font-size:10px;padding:9px 4px';
+    } else {
+      btn.className = 'btn btn-secondary';
+      btn.style.cssText = 'flex:1;font-size:10px;padding:9px 4px';
+    }
+  });
+
+  // Render key area
+  const area = document.getElementById('llmKeyArea');
+  if (!area) return;
+  area.innerHTML = key
+    ? `<div style="font-size:9px;color:var(--accent);padding:6px 8px;background:rgba(200,255,0,0.07);border:1px solid rgba(200,255,0,0.2);border-radius:7px;margin-bottom:6px">
+         ✓ ${info.label} key active — ${info.model} ready
+         <button onclick="clearLLMKey('${provider}')" style="background:none;border:none;color:var(--red);font-size:9px;cursor:pointer;float:right;padding:0">✕ remove</button>
+       </div>`
+    : `<div class="input-row" style="margin-bottom:4px">
+         <input class="input-field" id="llmKeyInput" type="password" placeholder="${info.placeholder}" style="font-size:11px"/>
+         <button class="btn btn-primary" onclick="saveLLMKey()" style="white-space:nowrap;font-size:11px">SAVE</button>
+       </div>
+       <button class="btn btn-secondary" style="width:100%;margin-bottom:6px;font-size:11px" onclick="testLLMKey()">🔬 Test Key</button>
+       <div id="groqTestResult" style="display:none;font-size:10px;padding:8px;border-radius:6px;margin-bottom:6px"></div>
+       <div style="font-size:9px;color:var(--text3);line-height:1.6">${info.hint}<br/>Key stored locally only.</div>`;
+}
+
+function clearLLMKey(provider) {
+  if (!S.settings) return;
+  if (provider === 'groq')       delete S.settings.groqApiKey;
+  if (provider === 'gemini')     delete S.settings.geminiApiKey;
+  if (provider === 'openrouter') delete S.settings.openrouterApiKey;
+  save(S);
+  renderLLMProviderUI();
 }
 // ═══════════════════════════════════════════
 //  TOAST
@@ -5026,7 +5132,64 @@ function fileToBase64(file) {
   });
 }
 
-// ─── FOOD PHOTO ESTIMATION via Groq ───
+// ─── MULTI-LLM VISION dispatcher ───
+async function callLLMVision(file, prompt) {
+  const provider = getLLMProvider();
+  const key = getLLMKey(provider);
+  if (!key) throw new Error('NO_KEY');
+  if (provider === 'groq')       return callGroqVision(file, prompt);
+  if (provider === 'gemini')     return callGeminiVision(file, prompt, key);
+  if (provider === 'openrouter') return callOpenRouterVision(file, prompt, key);
+  throw new Error('Unknown provider: ' + provider);
+}
+
+async function callGeminiVision(file, prompt, key) {
+  const b64 = await fileToBase64(file);
+  const mimeType = file.type || 'image/jpeg';
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [
+          { inline_data: { mime_type: mimeType, data: b64 } },
+          { text: prompt }
+        ]}],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 800 }
+      }) }
+  );
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+  }
+  const data = await resp.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+async function callOpenRouterVision(file, prompt, key) {
+  const b64 = await fileToBase64(file);
+  const mimeType = file.type || 'image/jpeg';
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`,
+      'HTTP-Referer': 'https://ashwani-panwar.github.io/health-tracker/', 'X-Title': 'VitalCore' },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-3.2-11b-vision-instruct:free',
+      messages: [{ role: 'user', content: [
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${b64}` } },
+        { type: 'text', text: prompt }
+      ]}],
+      temperature: 0.1, max_tokens: 800
+    })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+  }
+  const data = await resp.json();
+  return data?.choices?.[0]?.message?.content || '';
+}
+
+// ─── FOOD PHOTO ESTIMATION via LLM ───
 async function estimateFoodFromPhoto(input) {
   if (!input.files[0]) return;
   const file = input.files[0];
@@ -5045,32 +5208,34 @@ async function estimateFoodFromPhoto(input) {
     if (s) s.textContent = msg;
   };
 
-  if (!getGroqKey()) {
+  const provider = getLLMProvider();
+  if (!getLLMKey(provider)) {
     el.innerHTML = showPhotoFallback();
     return;
   }
 
   try {
-    setP(30, 'Groq analysing your meal...');
+    const provLabel = LLM_INFO[provider]?.label || provider;
+    setP(30, `${provLabel} analysing your meal...`);
     const prompt = `Look at this food photo carefully. Identify every food item visible.
 For each item estimate realistic portion size and nutrition.
 Reply ONLY with a JSON array, no other text:
 [{"food":"item name","portion":"e.g. 1 cup / 150g / 2 pieces","cal":number,"prot":number}]
 Use realistic values. Typical meal is 300-700 kcal total.`;
 
-    const text = await callGroqVision(file, prompt);
+    const text = await callLLMVision(file, prompt);
     setP(90, 'Parsing results...');
 
     const jsonMatch = text.match(/\[[\s\S]*?\]/);
     if (!jsonMatch) throw new Error('No JSON in response');
     const items = JSON.parse(jsonMatch[0]);
-    showPhotoResult(items, el, 'Groq Llama 4');
+    showPhotoResult(items, el, provLabel);
 
   } catch(e) {
     if (e.message === 'NO_KEY') {
       el.innerHTML = showPhotoFallback();
     } else {
-      el.innerHTML = `<div class="insight-box">⚠ Groq error: ${e.message}<br/><small style="color:var(--text3)">Check API key in History → Settings</small></div>`;
+      el.innerHTML = `<div class="insight-box">⚠ AI error: ${e.message}<br/><small style="color:var(--text3)">Check API key in History → Settings</small></div>`;
     }
   }
 }
