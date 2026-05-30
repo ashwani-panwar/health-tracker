@@ -1273,6 +1273,18 @@
     <!-- ======================== LOG FOOD ======================== -->
     <div id="tab-log" class="page">
 
+      <!-- Date navigator -->
+      <div id="dateNavFood" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 12px;gap:8px">
+        <button onclick="navDate('food',-1)" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer">← Prev</button>
+        <div id="dateNavFoodLabel" style="font-size:12px;color:var(--accent);font-weight:700;text-align:center;flex:1">Today</div>
+        <button id="dateNavFoodNext" onclick="navDate('food',1)" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;opacity:0.3" disabled>Next →</button>
+      </div>
+
+      <!-- Past day notice -->
+      <div id="pastDayFoodNotice" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(200,255,0,0.08);border:1px solid rgba(200,255,0,0.2);border-radius:10px;font-size:10px;color:var(--accent)">
+        📅 Viewing past day — you can edit entries. Changes are saved to history.
+      </div>
+
       <div class="log-section">
         <div class="section-title">Log Food <span>AI-powered</span></div>
 
@@ -1328,8 +1340,19 @@
         <div class="card-label">Quick Add</div>
         <div class="quick-chips" id="quickChips"></div>
 
+        <!-- Meal type selector -->
+        <div class="card-label" style="margin-top:12px">Meal Type</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px" id="mealTypeChips">
+          <button class="w-chip w-chip-sel" data-mt="Breakfast"       onclick="selectMealType('Breakfast')">🍳 Breakfast</button>
+          <button class="w-chip"            data-mt="Morning Snack"   onclick="selectMealType('Morning Snack')">🥜 Morning Snack</button>
+          <button class="w-chip"            data-mt="Lunch"           onclick="selectMealType('Lunch')">🍱 Lunch</button>
+          <button class="w-chip"            data-mt="Afternoon Snack" onclick="selectMealType('Afternoon Snack')">🍎 Afternoon Snack</button>
+          <button class="w-chip"            data-mt="Dinner"          onclick="selectMealType('Dinner')">🍽 Dinner</button>
+          <button class="w-chip"            data-mt="Late Night"      onclick="selectMealType('Late Night')">🌙 Late Night</button>
+        </div>
+
         <!-- Manual entry -->
-        <div class="card-label" style="margin-top:12px">Manual Entry</div>
+        <div class="card-label">Manual Entry</div>
         <div class="input-row">
           <input class="input-field" id="foodName" placeholder="Food name" />
         </div>
@@ -1567,6 +1590,14 @@
         <div id="bodyOcrResult" style="display:none;margin-top:12px"></div>
       </div>
 
+      <!-- Date navigator (body) -->
+      <div id="dateNavBody" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 4px;gap:8px">
+        <button onclick="navDate('body',-1)" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer">← Prev</button>
+        <div id="dateNavBodyLabel" style="font-size:12px;color:var(--accent);font-weight:700;text-align:center;flex:1">Today</div>
+        <button id="dateNavBodyNext" onclick="navDate('body',1)" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;opacity:0.3" disabled>Next →</button>
+      </div>
+      <div id="pastDayBodyNotice" style="display:none;font-size:10px;color:var(--accent2);background:rgba(0,200,150,0.08);border:1px solid rgba(0,200,150,0.2);border-radius:8px;padding:6px 10px;margin-bottom:8px">📅 Viewing past day — enter metrics to add/update that day's reading.</div>
+
       <div class="card">
         <div class="card-label">Manual Entry</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -1774,6 +1805,34 @@
         </div>
         <div class="divider"></div>
         <button class="btn btn-danger" style="width:100%;margin-top:4px" onclick="clearAllData()">⚠ Clear All Data</button>
+
+        <!-- About & Logout -->
+        <div class="divider" style="margin-top:16px"></div>
+        <div style="margin-top:10px">
+          <div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">About &amp; Account</div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+              <svg width="32" height="32" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#c8ff00" stroke-width="1.2" opacity="0.3"/><path d="M3 14h4l2.5-6 3 12 3-9 2 5 1.5-2H25" stroke="#c8ff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div>
+                <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--accent)">VITAL<span style="color:var(--text)">CORE</span></div>
+                <div style="font-size:10px;color:var(--text3)">Health & Fitness Tracker</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;color:var(--text2)">
+              <div>Version <span style="color:var(--accent)">2.0.0</span></div>
+              <div>Build <span style="color:var(--text3)">2026.05</span></div>
+              <div>Platform <span style="color:var(--text3)" id="aboutPlatform">Web</span></div>
+              <div>Data <span style="color:var(--text3)">Local + Cloud</span></div>
+            </div>
+            <div style="margin-top:10px;font-size:10px;color:var(--text3);line-height:1.6;border-top:1px solid var(--border);padding-top:8px">
+              Nutritional guidance based on ICMR dietary guidelines and applied biochemistry principles. All data is stored locally on your device.
+            </div>
+          </div>
+          <div id="loggedInUserInfo" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;font-size:11px;color:var(--text2)"></div>
+          <button onclick="confirmSignOut()" style="width:100%;padding:14px;background:transparent;border:1px solid var(--border2);border-radius:10px;color:var(--red);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+            <span>⏻</span> Sign Out
+          </button>
+        </div>
       </div>
 
     </div>
@@ -1848,6 +1907,21 @@
           </button>
         </div>
 
+        <!-- WORKOUT SCREENSHOT UPLOAD -->
+        <div class="card" style="border-color:rgba(200,255,0,0.2);margin-bottom:12px">
+          <div class="card-label" style="color:var(--accent)">📸 Upload Workout Screenshot</div>
+          <div style="font-size:10px;color:var(--text2);margin-bottom:10px">Snap a photo of your gym screen, workout log, or fitness tracker summary</div>
+          <label class="btn btn-secondary" style="width:100%;text-align:center;cursor:pointer;display:block">
+            📷 Take / Upload Screenshot
+            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="uploadWorkoutScreenshot(this)" />
+          </label>
+          <div id="workoutScreenshotPreview" style="display:none;margin-top:10px">
+            <img id="workoutScreenshotImg" style="width:100%;border-radius:10px;max-height:200px;object-fit:cover;margin-bottom:8px"/>
+            <input id="workoutScreenshotNote" class="input-field" style="width:100%;margin-bottom:8px" placeholder="Add a note (optional)..."/>
+            <button onclick="saveWorkoutScreenshot()" class="btn btn-primary" style="width:100%">Save Screenshot ✓</button>
+          </div>
+        </div>
+
         <!-- GYM PANEL -->
         <div id="wPanel-gym" style="display:none">
           <div class="card">
@@ -1868,21 +1942,27 @@
             <select id="gymExerciseSelect" class="input-field" style="width:100%;margin-top:8px;margin-bottom:10px">
               <option value="">— Select exercise —</option>
             </select>
-            <div style="display:flex;gap:8px;align-items:center">
-              <div style="flex:1">
-                <input id="gymWeight" type="number" placeholder="Weight" class="input-field" style="width:100%" min="0" step="0.5"/>
-                <div style="font-size:9px;color:var(--text3);margin-top:3px">kg (0 = bodyweight)</div>
+            <!-- All three inputs together: Sets × Reps @ Weight -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+              <div>
+                <input id="gymSets" type="number" placeholder="Sets" class="input-field" style="width:100%" min="1" max="20" value="3"/>
+                <div style="font-size:9px;color:var(--text3);margin-top:3px;text-align:center">sets</div>
               </div>
-              <div style="flex:1">
+              <div>
                 <input id="gymReps" type="number" placeholder="Reps" class="input-field" style="width:100%" min="1" max="200"/>
-                <div style="font-size:9px;color:var(--text3);margin-top:3px">reps</div>
+                <div style="font-size:9px;color:var(--text3);margin-top:3px;text-align:center">reps</div>
               </div>
-              <button onclick="addGymSet()" class="btn btn-primary" style="padding:12px 14px;white-space:nowrap">＋ Set</button>
+              <div>
+                <input id="gymWeight" type="number" placeholder="Kg" class="input-field" style="width:100%" min="0" step="0.5"/>
+                <div style="font-size:9px;color:var(--text3);margin-top:3px;text-align:center">kg (0=BW)</div>
+              </div>
+              <button onclick="addGymSet()" class="btn btn-primary" style="padding:12px 10px;white-space:nowrap;height:44px">＋ Add</button>
             </div>
+            <div style="font-size:9px;color:var(--text3);margin-top:6px;text-align:center">e.g. 3 sets × 10 reps @ 60 kg</div>
           </div>
 
           <!-- Current session log -->
-          <div id="gymSessionLog" style="display:none" class="card" style="margin-top:10px">
+          <div id="gymSessionLog" style="display:none;margin-top:10px" class="card">
             <div class="card-label">Current Session <span id="gymSetCount" style="color:var(--accent)"></span></div>
             <div id="gymSessionEntries" style="margin-top:8px"></div>
             <button onclick="finishGymSession()" class="btn btn-primary" style="width:100%;margin-top:12px;padding:14px">
@@ -1891,9 +1971,17 @@
           </div>
         </div>
 
-        <!-- Today's workout log -->
-        <div class="card" style="margin-top:16px">
-          <div class="card-label">Today's Workout Log
+        <!-- Date navigator (workout) -->
+        <div id="dateNavWorkout" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 4px;gap:8px;margin-top:16px">
+          <button onclick="navDate('workout',-1)" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer">← Prev</button>
+          <div id="dateNavWorkoutLabel" style="font-size:12px;color:var(--accent);font-weight:700;text-align:center;flex:1">Today</div>
+          <button id="dateNavWorkoutNext" onclick="navDate('workout',1)" style="padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;opacity:0.3" disabled>Next →</button>
+        </div>
+        <div id="pastDayWorkoutNotice" style="display:none;font-size:10px;color:var(--accent2);background:rgba(0,200,150,0.08);border:1px solid rgba(0,200,150,0.2);border-radius:8px;padding:6px 10px;margin-bottom:8px">📅 Viewing past day — you can delete entries.</div>
+
+        <!-- Workout log for viewed day -->
+        <div class="card" style="margin-top:4px">
+          <div class="card-label" id="workoutLogTitle">Today's Workout Log
             <span id="workoutTotalBurn" style="float:right;color:var(--accent3);font-weight:700"></span>
           </div>
           <div id="workoutLogEntries" style="margin-top:8px">
@@ -2271,6 +2359,7 @@ function initFirebaseAuth() {
 function showMainApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = '';
+  setTimeout(updateLoggedInUser, 300); // give auth a moment to populate currentUser
 }
 
 function showLoginScreenUI() {
@@ -2283,6 +2372,29 @@ function showLoginScreenUI() {
 
 function signOut() {
   if (_auth) _auth.signOut();
+}
+
+function confirmSignOut() {
+  if (confirm('Sign out of VitalCore? Your data is saved locally.')) {
+    if (_auth) _auth.signOut();
+  }
+}
+
+function updateLoggedInUser() {
+  const user = _auth && _auth.currentUser;
+  const el = document.getElementById('loggedInUserInfo');
+  const platEl = document.getElementById('aboutPlatform');
+  if (platEl) platEl.textContent = window.isNativeApp ? 'Android' : 'Web';
+  if (!el) return;
+  if (user) {
+    el.style.display = 'block';
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
+      ${user.photoURL ? `<img src="${user.photoURL}" style="width:32px;height:32px;border-radius:50%;border:2px solid var(--border2)"/>` : '<div style="width:32px;height:32px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:14px">👤</div>'}
+      <div><div style="font-weight:700;color:var(--text)">${user.displayName || 'User'}</div><div style="font-size:9px;color:var(--text3)">${user.email || ''}</div></div>
+    </div>`;
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 // ─── GOOGLE DRIVE BACKUP ───
@@ -2477,17 +2589,43 @@ function save(state) {
 
 let S = cleanupFloats(loadState());
 
+// ── History archive helpers ──
+function archiveTodayToHistory() {
+  if (!S.history) S.history = [];
+  const dateToArchive = S.today.date;
+  // Remove any existing entry for that date first
+  S.history = S.history.filter(h => h.date !== dateToArchive);
+  // Store a full snapshot
+  S.history.push(JSON.parse(JSON.stringify(S.today)));
+  // Keep last 90 days
+  if (S.history.length > 90) S.history = S.history.slice(-90);
+}
+
+// Current view date (null = today)
+let _viewDate = null;
+function getViewState() {
+  if (!_viewDate || _viewDate === todayStr()) return S.today;
+  if (!S.history) return null;
+  return S.history.find(h => h.date === _viewDate) || null;
+}
+function isViewingToday() { return !_viewDate || _viewDate === todayStr(); }
+
 // If date changed, archive yesterday and start fresh
 (function checkNewDate() {
   if (S.today.date !== todayStr()) {
     if (S.today.score !== null) {
       S.dailyScores.push({ date: S.today.date, score: S.today.score });
     }
+    // Archive the full today snapshot before rolling over
+    if (!S.history) S.history = [];
+    archiveTodayToHistory();
     const fresh = defaultState().today;
     fresh.date = todayStr();
     S.today = fresh;
     save(S);
   }
+  // Ensure history array exists
+  if (!S.history) { S.history = []; save(S); }
 })();
 
 // Auto new-day at midnight based on device clock
@@ -2831,8 +2969,57 @@ function formatDelta(delta, unit, isGood) {
   return `<span class="delta-badge ${cls}">${arrow}${sign}${delta}${unit}</span>`;
 }
 
+const MEAL_ORDER = ['Breakfast','Morning Snack','Lunch','Afternoon Snack','Dinner','Late Night'];
+const MEAL_ICONS = { 'Breakfast':'🍳', 'Morning Snack':'🥜', 'Lunch':'🍱', 'Afternoon Snack':'🍎', 'Dinner':'🍽', 'Late Night':'🌙' };
+
+// ── Date navigation ──
+function navDate(tab, dir) {
+  // Collect all known dates (food/workout history + body metrics + daily scores)
+  const allDates = [...new Set([
+    todayStr(),
+    ...(S.history || []).map(h => h.date),
+    ...(S.bodyMetrics || []).map(m => m.date),
+    ...(S.dailyScores || []).map(d => d.date)
+  ])].sort((a, b) => parseDateStr(a) - parseDateStr(b));
+
+  const current = _viewDate || todayStr();
+  const idx = allDates.indexOf(current);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= allDates.length) return;
+  _viewDate = allDates[newIdx];
+  if (_viewDate === todayStr()) _viewDate = null;
+  updateDateNavUI(tab);
+  renderAll();
+}
+
+function parseDateStr(s) {
+  // format "DD Mon YYYY"
+  try { return new Date(s).getTime(); } catch { return 0; }
+}
+
+function updateDateNavUI(tab) {
+  const isToday = isViewingToday();
+  const dateLabel = isToday ? 'Today' : (_viewDate || todayStr());
+  // Update all three tab navs
+  ['Food', 'Workout', 'Body'].forEach(t => {
+    const lbl = document.getElementById(`dateNav${t}Label`);
+    const nxt = document.getElementById(`dateNav${t}Next`);
+    if (lbl) lbl.textContent = dateLabel;
+    if (nxt) { nxt.disabled = isToday; nxt.style.opacity = isToday ? '0.3' : '1'; }
+  });
+  ['pastDayFoodNotice','pastDayWorkoutNotice','pastDayBodyNotice'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isToday ? 'none' : '';
+  });
+  // Keep workout log title in sync
+  const logTitle = document.getElementById('workoutLogTitle');
+  if (logTitle) logTitle.textContent = isToday ? "Today's Workout Log" : `${_viewDate || todayStr()} Workout Log`;
+}
+
 function renderFoodLog() {
-  const meals = S.today.meals;
+  updateDateNavUI('food');
+  const viewState = getViewState();
+  const meals = viewState ? (viewState.meals || []) : S.today.meals;
   const mealsList = document.getElementById('mealsList');
   const empty = document.getElementById('mealsEmpty');
 
@@ -2843,30 +3030,50 @@ function renderFoodLog() {
     mealsList.innerHTML = '';
     mealsList.appendChild(empty);
   } else {
-    mealsList.innerHTML = meals.map((m, i) => `
-      <div class="meal-item fade-in">
-        <div class="meal-name">${m.name}</div>
-        <div class="meal-macros">${Math.round(m.cal)} kcal<br/>${r1(m.prot)}g prot</div>
-        <button class="meal-delete" onclick="deleteMeal(${i})">✕</button>
-      </div>
-    `).join('');
+    // Group by mealType
+    const groups = {};
+    meals.forEach((m, i) => {
+      const t = m.mealType || 'Uncategorized';
+      if (!groups[t]) groups[t] = [];
+      groups[t].push({ ...m, idx: i });
+    });
+    const orderedKeys = [...MEAL_ORDER.filter(k => groups[k]), ...Object.keys(groups).filter(k => !MEAL_ORDER.includes(k))];
+    mealsList.innerHTML = orderedKeys.map(type => {
+      const items = groups[type];
+      const typeCal  = items.reduce((s, m) => s + Math.round(m.cal), 0);
+      const typeProt = items.reduce((s, m) => s + (m.prot || 0), 0);
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.5px">${MEAL_ICONS[type]||'🍴'} ${type.toUpperCase()}</div>
+          <div style="font-size:9px;color:var(--text3)">${typeCal} kcal · ${r1(typeProt)}g prot</div>
+        </div>
+        ${items.map(m => `
+          <div class="meal-item fade-in">
+            <div class="meal-name">${m.name}</div>
+            <div class="meal-macros">${Math.round(m.cal)} kcal<br/>${r1(m.prot)}g prot</div>
+            <button class="meal-delete" onclick="deleteMeal(${m.idx})">✕</button>
+          </div>`).join('')}
+      </div>`;
+    }).join('<div class="divider" style="margin:4px 0"></div>');
   }
 
-  document.getElementById('totalCalFull').textContent = Math.round(S.today.calories) + ' kcal';
-  document.getElementById('totalProtFull').textContent = r1(S.today.protein) + 'g';
+  const vs = getViewState() || S.today;
+  document.getElementById('totalCalFull').textContent = Math.round(vs.calories) + ' kcal';
+  document.getElementById('totalProtFull').textContent = r1(vs.protein) + 'g';
 
   // Meal insight
-  const p = S.today.protein;
+  const p = vs.protein;
+  const pt = S.settings.proteinTarget || 105;
   let ins = '';
-  if (p < 60) ins = '⚠ Protein very low. Add at least 2 more high-protein meals.';
-  else if (p < 90) ins = `↑ ${90 - p}g more protein to hit minimum target.`;
-  else if (p <= 120) ins = '✓ Protein on target. Well done.';
-  else ins = `You've exceeded protein target (${p}g). Excess is fine for athletes.`;
+  if (p < pt * 0.5) ins = '⚠ Protein very low. Add eggs, chicken, dal, or paneer.';
+  else if (p < pt * 0.85) ins = `↑ ${Math.round(pt - p)}g more protein needed to reach ${pt}g target.`;
+  else if (p <= pt * 1.2) ins = '✓ Protein on target. Well done.';
+  else ins = `Protein at ${p}g — exceeds target (fine for athletes/bulking).`;
   document.getElementById('mealInsight').textContent = ins;
 
-  // Quick chips
+  // Quick chips — only show for today
   const chips = document.getElementById('quickChips');
-  chips.innerHTML = QUICK_FOODS.map((f, i) =>
+  if (chips) chips.innerHTML = QUICK_FOODS.map((f, i) =>
     `<div class="chip" onclick="quickAdd(${i})">${f.name}</div>`
   ).join('');
 
@@ -3016,14 +3223,28 @@ function renderActivity() {
 }
 
 function renderBody() {
+  updateDateNavUI('body');
   const metrics = S.bodyMetrics;
-  if (metrics.length === 0) {
+
+  // When viewing a past date, show only that date's metrics in the "Latest Reading" card
+  const viewingDate = _viewDate || todayStr();
+  const displayMetrics = isViewingToday()
+    ? metrics
+    : metrics.filter(m => m.date === viewingDate);
+
+  if (displayMetrics.length === 0) {
     document.getElementById('bodyDisplay').style.display = 'none';
     document.getElementById('bodyHistorySection').style.display = 'none';
+    const comp = document.getElementById('bodyCompSection');
+    if (comp) comp.style.display = 'none';
+    if (!isViewingToday()) {
+      // Still render timeline using all metrics
+      if (metrics.length >= 2) renderBodyTimeline(metrics);
+    }
     return;
   }
 
-  const latest = metrics[metrics.length - 1];
+  const latest = displayMetrics[displayMetrics.length - 1];
   document.getElementById('bodyDisplay').style.display = 'block';
 
   const grid = document.getElementById('bodyGrid');
@@ -3706,144 +3927,342 @@ function initProfileCheck() {
   }
 }
 
-// ─── COACH INSIGHTS ───
+// ─── COACH — Comprehensive AI-powered nutritional & fitness guidance ───
+// Based on applied biochemistry, ICMR dietary guidelines, and exercise physiology principles
 function renderCoach() {
   const el = document.getElementById('coachContent');
   if (!el) return;
 
-  const recent7 = S.dailyScores.slice(-7);
-  const avgScore = recent7.length
-    ? Math.round(recent7.reduce((s, d) => s + d.score, 0) / recent7.length)
-    : null;
-  const trend = recent7.length >= 2
-    ? recent7[recent7.length - 1].score - recent7[0].score
-    : 0;
-
-  const t = S.today;
-  const proteinPct = S.settings.proteinTarget ? Math.round(t.protein / S.settings.proteinTarget * 100) : 0;
-  const caloriePct = S.settings.calorieTarget ? Math.round(t.calories / S.settings.calorieTarget * 100) : 0;
-  const stepsPct   = S.settings.stepsTarget   ? Math.round(t.steps   / S.settings.stepsTarget   * 100) : 0;
-
+  const t  = S.today;
+  const st = S.settings || {};
+  const p  = (st.profile || {});
   const bm = S.bodyMetrics || [];
-  const latestWeight  = bm.length ? bm[bm.length - 1].weight : null;
-  const prevWeight    = bm.length >= 2 ? bm[bm.length - 2].weight : null;
-  const weightDelta   = (latestWeight && prevWeight) ? (latestWeight - prevWeight).toFixed(1) : null;
+  const recent7 = S.dailyScores.slice(-7);
+  const recent14 = S.dailyScores.slice(-14);
+  const h  = new Date().getHours();
 
-  // Score bar chart (7-day)
+  // ── Derived metrics ──
+  const weight     = p.weight || (bm.length ? bm[bm.length-1].weight : null) || 70;
+  const height     = p.height || null;
+  const age        = p.age || 30;
+  const gender     = p.gender || 'male';
+  const goalWeight = p.goalWeight || weight;
+  const bmi        = height ? +(weight / ((height/100)**2)).toFixed(1) : null;
+  const calTarget  = st.calorieTarget || 2000;
+  const protTarget = st.proteinTarget || 105;
+  const stepTarget = st.stepsTarget || 7000;
+
+  // BMR (Mifflin-St Jeor)
+  const bmr = gender === 'female'
+    ? Math.round(10*weight + 6.25*height - 5*age - 161)
+    : Math.round(10*weight + 6.25*height - 5*age + 5);
+  const actMul = { sedentary:1.2, light:1.375, moderate:1.55, active:1.725 };
+  const tdee = height ? Math.round(bmr * (actMul[p.activityLevel] || 1.375)) : null;
+
+  // Protein per kg
+  const protPerKg = +(protTarget / weight).toFixed(1);
+
+  // Recent workouts (last 7 days from history)
+  const recentHistory = (S.history || []).slice(-7);
+  const workoutDays   = recentHistory.filter(h => h.workoutDone && h.workoutType !== 'none').length;
+  const cardioSessions = [...recentHistory, t].filter(h => (h.workoutLog || []).some(w => w.type === 'cardio')).length;
+  const gymSessions    = [...recentHistory, t].filter(h => (h.workoutLog || []).some(w => w.type === 'gym')).length;
+
+  // Calorie burn this week
+  const weeklyBurn = recentHistory.reduce((sum, d) => sum + ((d.workoutLog || []).reduce((s,w) => s + (w.calories||0), 0)), 0);
+
+  // Weight trend
+  const latestWeight = bm.length ? bm[bm.length-1].weight : null;
+  const prevWeight   = bm.length >= 2 ? bm[bm.length-2].weight : null;
+  const weightDelta  = (latestWeight && prevWeight) ? +(latestWeight - prevWeight).toFixed(1) : null;
+  const goal = goalWeight < weight - 1 ? 'loss' : goalWeight > weight + 1 ? 'gain' : 'maintain';
+
+  // Score stats
+  const avgScore = recent7.length ? Math.round(recent7.reduce((s,d)=>s+d.score,0)/recent7.length) : null;
+  const trend = recent7.length >= 2 ? recent7[recent7.length-1].score - recent7[0].score : 0;
+  const bestStreak = S.streak || 0;
+
+  // Meal pattern analysis
+  const mealTypes = (t.meals || []).map(m => m.mealType || 'Unknown');
+  const hasBreakfast = mealTypes.includes('Breakfast');
+  const mealSpread = [...new Set(mealTypes)].length;
+
+  // Helper
+  const pct = (v, target) => target > 0 ? Math.round(v / target * 100) : 0;
+  const cp = pct(t.calories, calTarget);
+  const pp = pct(t.protein, protTarget);
+  const sp = pct(t.steps, stepTarget);
+
+  // Score bar chart
   const scoreBar = recent7.map(d => {
     const col = d.score >= 75 ? '#c8ff00' : d.score >= 50 ? '#ffd700' : '#ff6b35';
     const barH = Math.max(4, Math.round(d.score * 0.44));
-    const day  = d.date.split(' ')[0];
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
       <div style="font-size:9px;color:var(--text3)">${d.score}</div>
       <div style="width:100%;height:${barH}px;background:${col};border-radius:3px 3px 0 0"></div>
-      <div style="font-size:8px;color:var(--text3)">${day}</div>
+      <div style="font-size:8px;color:var(--text3)">${d.date.split(' ')[0]}</div>
     </div>`;
   }).join('');
 
-  // Recommendations
-  const h = new Date().getHours();
-  const recs = [];
-  if (t.protein < S.settings.proteinTarget * 0.75)
-    recs.push({ icon: '🥩', text: `Protein at ${t.protein}g — add a shake, eggs, or chicken to hit ${S.settings.proteinTarget}g.`, pri: 'high' });
-  if (t.steps < S.settings.stepsTarget * 0.5 && h > 12)
-    recs.push({ icon: '🚶', text: `${t.steps.toLocaleString()} steps so far — a 20-min walk adds ~2,000 more.`, pri: 'med' });
-  if (!t.workoutDone && h > 14)
-    recs.push({ icon: '💪', text: 'No workout logged yet. Even 20 minutes of movement counts.', pri: 'low' });
-  if (t.meals.length < 3 && h > 14)
-    recs.push({ icon: '🍽️', text: `Only ${t.meals.length} meal${t.meals.length !== 1 ? 's' : ''} logged — consistent eating supports muscle retention.`, pri: 'med' });
-  if (S.streak >= 7)
-    recs.push({ icon: '🔥', text: `${S.streak}-day streak! You're building a real long-term habit.`, pri: 'good' });
-  if (avgScore !== null && avgScore >= 75)
-    recs.push({ icon: '📈', text: `7-day average score ${avgScore} — consistently strong week.`, pri: 'good' });
-  if (recs.length === 0)
-    recs.push({ icon: '✅', text: 'All targets on track — great discipline today!', pri: 'good' });
+  // ── SECTION BUILDER ──
+  function card(title, emoji, content, color) {
+    return `<div class="card" style="margin-bottom:12px;border-left:3px solid ${color||'var(--border2)'}">
+      <div class="card-label" style="color:${color||'var(--text2)'}">${emoji} ${title}</div>
+      ${content}
+    </div>`;
+  }
+  function tip(icon, txt, pri) {
+    const c = pri==='good'?'var(--accent)':pri==='ok'?'var(--accent2)':pri==='warn'?'var(--yellow)':pri==='alert'?'var(--red)':'var(--text2)';
+    return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start">
+      <div style="font-size:18px;flex-shrink:0;line-height:1.3">${icon}</div>
+      <div style="font-size:11px;color:${c};line-height:1.6">${txt}</div>
+    </div>`;
+  }
 
-  const priColor = { high: 'var(--red)', med: 'var(--accent3)', low: 'var(--text2)', good: 'var(--accent)' };
+  // ─── 1. DIETARY GUIDANCE ───
+  let dietTips = '';
 
+  // Calorie balance
+  if (cp < 50 && h > 12)
+    dietTips += tip('🍽','<strong>Low calorie intake</strong> — eating too little can slow metabolism and cause muscle breakdown. Aim for at least 80% of your target by evening.','alert');
+  else if (cp > 130)
+    dietTips += tip('⚠','<strong>Calories over target by '+(t.calories-calTarget)+' kcal.</strong> Consider lighter choices at your next meal — swap refined carbs for vegetables.','warn');
+  else if (cp >= 85 && cp <= 115)
+    dietTips += tip('✅','<strong>Calorie intake on target</strong> ('+t.calories+' / '+calTarget+' kcal). Excellent energy balance today.','good');
+
+  // Protein quality
+  if (pp < 50)
+    dietTips += tip('🥩','<strong>Protein critically low</strong> ('+t.protein+'g of '+protTarget+'g). Per applied biochemistry principles, insufficient protein (< '+Math.round(protTarget*0.8)+'g at '+protPerKg+' g/kg) leads to muscle catabolism. Add: eggs, paneer, dal, chicken breast, or Greek yogurt.','alert');
+  else if (pp < 75)
+    dietTips += tip('🍗','<strong>Protein at '+t.protein+'g</strong> — need '+(protTarget - t.protein)+'g more. Protein requires all essential amino acids for complete utilisation. Combine cereals + legumes (rice + dal) for complete protein.','warn');
+  else if (pp >= 90)
+    dietTips += tip('💪','<strong>Excellent protein intake</strong> ('+t.protein+'g). Adequate protein stimulates muscle protein synthesis (MPS) and supports enzyme, hormone, and antibody production.','good');
+
+  // Meal pattern
+  if (!hasBreakfast && h > 10)
+    dietTips += tip('🌅','<strong>No breakfast logged.</strong> Breakfast breaks the overnight fast and restores liver glycogen. Studies show breakfast eaters have better concentration, blood glucose control, and lower BMI. Even a small high-protein breakfast (eggs, upma, sprouts) is beneficial.','warn');
+  if (mealSpread <= 1 && t.meals.length >= 2)
+    dietTips += tip('⏰','<strong>All meals in one category.</strong> Distributing protein across 4-5 meals maximises muscle protein synthesis. The body can only utilise ~30-40g protein per meal for MPS — smaller frequent meals are more efficient.','ok');
+  if (t.meals.length >= 4 && mealSpread >= 3)
+    dietTips += tip('📊','<strong>Good meal spread</strong> across '+mealSpread+' meal occasions. Consistent meal timing helps regulate circadian metabolism and maintain stable blood glucose levels.','good');
+
+  // Food diversity
+  if (t.meals.length > 0) {
+    const mealNames = (t.meals||[]).map(m => m.name.toLowerCase());
+    const hasVeg = mealNames.some(n => /spinach|broccoli|carrot|tomato|veg|salad|cucumber|dal|lentil|beans|peas/.test(n));
+    const hasProtein = mealNames.some(n => /egg|chicken|fish|paneer|tofu|dal|curd|milk|cheese|meat|pulse/.test(n));
+    const hasFruit = mealNames.some(n => /apple|banana|orange|mango|grape|fruit|berry|guava|pomegranate/.test(n));
+    if (!hasVeg)
+      dietTips += tip('🥦','<strong>No vegetables detected today.</strong> Vegetables provide dietary fibre (target 25-35g/day), micronutrients, and antioxidants. Fibre feeds gut microbiota and reduces cholesterol absorption. Add a salad or subzi to your next meal.','warn');
+    if (!hasProtein)
+      dietTips += tip('🫘','<strong>Ensure a protein source at every meal.</strong> Legumes (dal, rajma, chana) provide not only protein but also iron, folate, and zinc — critical micronutrients for Indian diets.','ok');
+    if (!hasFruit && h > 14)
+      dietTips += tip('🍎','<strong>No fruits logged.</strong> Fruits provide Vitamin C (enhances iron absorption), folate, potassium, and natural antioxidants (flavonoids). 2 servings/day is the ICMR recommendation.','ok');
+  }
+
+  // Hydration reminder
+  const waterTarget = Math.round(weight * 35);
+  dietTips += tip('💧','<strong>Hydration goal: ~'+(waterTarget/1000).toFixed(1)+'L/day</strong> for your body weight. Add 500ml extra per hour of exercise. Signs of adequate hydration: pale yellow urine. Dehydration by just 2% body weight reduces physical and cognitive performance.','ok');
+
+  // TDEE insight
+  if (tdee)
+    dietTips += tip('🔢','<strong>Your estimated TDEE is '+tdee+' kcal/day</strong> (BMR '+bmr+' × '+((actMul[p.activityLevel]||1.375))+'). '+(goal==='loss'?'A 400-500 kcal deficit creates ~0.4 kg/week fat loss — the safest sustainable rate.':goal==='gain'?'A 250-300 kcal surplus maximises lean muscle gain with minimal fat storage.':'Your calorie target matches maintenance — ideal for body recomposition.'),'ok');
+
+  // ─── 2. ACTIVITY GUIDANCE ───
+  let actTips = '';
+  if (sp < 40 && h > 16)
+    actTips += tip('🚨','<strong>Steps very low today ('+t.steps.toLocaleString()+')</strong>. Prolonged sitting increases insulin resistance, cardiovascular risk, and metabolic rate drops. Even a 10-minute walk every hour significantly reduces these risks.','alert');
+  else if (sp < 70 && h > 12)
+    actTips += tip('🚶','<strong>'+(stepTarget-t.steps).toLocaleString()+' more steps to target.</strong> 10,000 steps burn ~300-400 kcal and improve insulin sensitivity. A brisk 20-minute walk adds ~2,000 steps.','warn');
+  else if (sp >= 100)
+    actTips += tip('🏅','<strong>Steps target achieved!</strong> '+t.steps.toLocaleString()+' steps. Regular walking reduces risk of type 2 diabetes by 30-50%, improves cardiovascular health, and boosts mood through endorphin release.','good');
+
+  // Weekly activity pattern
+  if (workoutDays === 0 && recentHistory.length >= 3)
+    actTips += tip('📅','<strong>No workouts in the last week.</strong> The WHO recommends 150 min/week of moderate aerobic activity + 2 resistance sessions. Start with 3 sessions of 30 minutes — any movement is better than none.','alert');
+  else if (workoutDays >= 3)
+    actTips += tip('🔥','<strong>'+workoutDays+' workout days this week</strong> — great consistency! Aim for 4-5 days to maximise cardiovascular and metabolic benefits while allowing adequate recovery.','good');
+
+  // Cardio vs gym balance
+  if (cardioSessions > 0 && gymSessions > 0)
+    actTips += tip('⚖','<strong>Good cardio + strength balance</strong> this week ('+cardioSessions+' cardio, '+gymSessions+' gym). Combined training is optimal — aerobic exercise improves VO₂max and fat oxidation; resistance training increases BMR by building lean muscle mass.','good');
+  else if (cardioSessions === 0 && gymSessions >= 2)
+    actTips += tip('❤️','<strong>Add 1-2 cardio sessions per week.</strong> Aerobic exercise strengthens the heart, improves lung capacity, increases HDL cholesterol, and accelerates fat burning via β-oxidation. Even 30 min of brisk walking counts.','warn');
+  else if (gymSessions === 0 && cardioSessions >= 2)
+    actTips += tip('🏋','<strong>Consider adding resistance training.</strong> Muscle is metabolically active tissue — each kg of muscle burns ~13 kcal/day at rest. Resistance training also improves bone mineral density and insulin sensitivity.','warn');
+
+  // Calorie burn
+  if (weeklyBurn > 1000)
+    actTips += tip('🔥','<strong>'+weeklyBurn+' kcal burned from exercise this week.</strong> Excellent! Exercise-induced calorie deficit, combined with proper nutrition, is the most sustainable approach to body composition change.','good');
+
+  // ─── 3. WORKOUT GUIDANCE ───
+  let workoutTips = '';
+  const todayWorkouts = t.workoutLog || [];
+  const todayGym = todayWorkouts.filter(w => w.type === 'gym');
+  const todayCardio = todayWorkouts.filter(w => w.type === 'cardio');
+
+  if (todayWorkouts.length === 0) {
+    if (h > 8 && h < 20)
+      workoutTips += tip('💡','<strong>No workout logged today.</strong> If doing a gym session: start with compound movements (squats, bench, deadlift) before isolation exercises — they recruit more muscle fibres and trigger greater hormonal response (testosterone, GH).','ok');
+    else
+      workoutTips += tip('😴','<strong>Rest day is valuable.</strong> Muscles grow during recovery, not during training. Adequate sleep (7-9 hours) is essential for growth hormone release, which peaks 60-90 min after sleep onset.','ok');
+  }
+
+  if (todayGym.length > 0) {
+    const allExercises = todayGym.flatMap(g => (g.exercises||[]).map(e => e.name));
+    const totalSets = todayGym.reduce((s, g) => s + (g.totalSets||0), 0);
+    workoutTips += tip('💪','<strong>Gym session logged: '+totalSets+' sets across '+allExercises.length+' exercise'+(allExercises.length!==1?'s':'')+'.</strong> For hypertrophy, research supports 3-5 sets of 8-12 reps at 65-80% of 1RM. Progressive overload (adding weight or reps each session) is the #1 driver of strength gains.','good');
+    // Check muscle balance
+    const exStr = allExercises.join(' ').toLowerCase();
+    const hasChest = /bench|press|fly|push/.test(exStr);
+    const hasBack = /row|pull|deadlift|pulldown/.test(exStr);
+    if (hasChest && !hasBack)
+      workoutTips += tip('⚖','<strong>Add a pulling exercise (rows, pull-ups).</strong> Anterior-posterior muscle balance prevents posture problems. Every push movement should be matched with a pull to maintain shoulder joint health.','warn');
+  }
+
+  if (todayCardio.length > 0) {
+    const totalDur = todayCardio.reduce((s, c) => s + (c.duration||0), 0);
+    const totalCals = todayCardio.reduce((s, c) => s + (c.calories||0), 0);
+    workoutTips += tip('🏃','<strong>Cardio: '+totalDur+' min · '+totalCals+' kcal burned.</strong> Moderate-intensity cardio (60-70% max HR) maximises fat oxidation. Post-cardio, your body continues burning calories for up to 24 hours (EPOC effect), especially after HIIT.','good');
+  }
+
+  // Pre/post workout nutrition
+  if (todayWorkouts.length > 0) {
+    workoutTips += tip('🥤','<strong>Post-workout nutrition window (30-90 min):</strong> Consume 20-30g fast-digesting protein (whey, egg white, milk) + simple carbs (banana, rice, bread) to maximise muscle protein synthesis and replenish glycogen stores. Carb:protein ratio 3:1 is optimal after endurance training.','ok');
+  } else if (h >= 6 && h <= 10) {
+    workoutTips += tip('⚡','<strong>Pre-workout fueling:</strong> Complex carbs 2-3 hours before training (oats, brown rice, whole wheat bread) provide sustained energy. 30 min before: banana + coffee for quick energy + improved performance.','ok');
+  }
+
+  // Recovery
+  if (gymSessions >= 4)
+    workoutTips += tip('🛌','<strong>High training volume this week.</strong> Muscle fibres repair in 24-72 hours. Signs of overtraining: persistent fatigue, declining performance, elevated resting HR. Include at least 2 full rest or active recovery days.','warn');
+
+  // ─── 4. EMOTIONAL & MOMENTUM GUIDANCE ───
+  let momentumTips = '';
+
+  // Streak
+  if (bestStreak >= 14)
+    momentumTips += tip('🔥','<strong>'+bestStreak+'-day streak — exceptional consistency!</strong> Research shows habits solidify after 66 days of repetition. You're building lasting neural pathways. Consistency outperforms intensity.','good');
+  else if (bestStreak >= 7)
+    momentumTips += tip('⚡','<strong>'+bestStreak+'-day streak.</strong> You\'ve crossed the "1 week" threshold — the hardest part. Now your routine is becoming automatic. Keep the momentum; missing 2 days in a row is harder to recover from than 1.','good');
+  else if (bestStreak === 0 && recent7.length === 0)
+    momentumTips += tip('🌱','<strong>Starting your wellness journey.</strong> Every expert was once a beginner. Focus on the process, not perfection. Logging even partial data is better than skipping — it builds the habit loop (cue → routine → reward).','ok');
+  else if (bestStreak === 0 && recent7.length > 0)
+    momentumTips += tip('🔄','<strong>Streak reset — no problem.</strong> Studies show self-compassion after setbacks predicts better long-term adherence than guilt. Log today\'s meals, and your streak restarts.','ok');
+
+  // Score trend
+  if (avgScore !== null) {
+    if (trend > 10)
+      momentumTips += tip('📈','<strong>Score improving: +'+trend+' pts this week.</strong> Upward trends signal compounding habits. Small daily improvements (1%) add up to 37× improvement over a year.','good');
+    else if (trend < -10)
+      momentumTips += tip('📉','<strong>Score dipped this week ('+trend+' pts).</strong> Identify 1 specific thing to improve tomorrow — don\'t try to fix everything at once. Likely highest-impact area: protein intake.','warn');
+    else
+      momentumTips += tip('➡','<strong>Consistent week — avg score '+avgScore+'.</strong> '+(avgScore>=70 ? 'Strong foundation. Push to hit 80+ by focusing on workout consistency.' : 'A score above 70 typically comes from hitting protein + steps + one workout. Try all three tomorrow.'),'ok');
+  }
+
+  // Weight progress
+  if (weightDelta !== null && latestWeight) {
+    if (goal === 'loss' && weightDelta < 0)
+      momentumTips += tip('✅','<strong>Weight trending down ('+weightDelta+' kg).</strong> Sustainable fat loss is 0.25-0.5 kg/week. Faster loss risks muscle breakdown. Your current deficit is working — stay the course.','good');
+    else if (goal === 'gain' && weightDelta > 0)
+      momentumTips += tip('💪','<strong>Weight trending up (+'+weightDelta+' kg).</strong> With adequate protein and resistance training, most gains should be lean muscle. Monitor body composition, not just weight.','good');
+    else if (goal === 'loss' && weightDelta > 0.5)
+      momentumTips += tip('⚠','<strong>Weight increased +'+weightDelta+' kg.</strong> Don\'t panic — weight fluctuates 1-2 kg daily due to water, sodium, and glycogen. Look at the 2-week trend, not single measurements.','warn');
+  }
+
+  // ─── 5. OVERALL PICTURE ───
+  let overallTips = '';
+  const overall = [];
+  if (pp >= 80) overall.push('🟢 Protein on track');
+  else overall.push('🔴 Protein below target');
+  if (cp >= 80 && cp <= 115) overall.push('🟢 Calories balanced');
+  else if (cp < 60) overall.push('🟡 Calories too low');
+  else overall.push('🟡 Calories over target');
+  if (sp >= 80) overall.push('🟢 Steps target hit');
+  else overall.push('🔴 Steps below target');
+  if (t.workoutDone) overall.push('🟢 Workout done');
+  else overall.push('🟡 No workout today');
+  if (hasBreakfast) overall.push('🟢 Breakfast logged');
+  else overall.push('🟡 No breakfast');
+  if (bestStreak >= 3) overall.push('🟢 '+bestStreak+'-day streak');
+  if (bmi) {
+    const bmiCat = bmi < 18.5 ? '🔴 Underweight' : bmi < 25 ? '🟢 Healthy BMI' : bmi < 30 ? '🟡 Overweight' : '🔴 Obese';
+    overall.push(bmiCat + ' ('+bmi+')');
+  }
+
+  overallTips = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+    ${overall.map(o => `<div style="font-size:10px;color:var(--text2);background:var(--surface2);padding:6px 10px;border-radius:8px">${o}</div>`).join('')}
+  </div>`;
+
+  // Top 3 priorities
+  const priorities = [];
+  if (pp < 80)  priorities.push({ icon:'🥩', text: 'Hit protein target ('+t.protein+'g → '+protTarget+'g). Priority #1 for muscle & recovery.' });
+  if (sp < 80)  priorities.push({ icon:'🚶', text: 'Reach daily steps ('+t.steps.toLocaleString()+'→ '+stepTarget.toLocaleString()+'). 10-15 min walk gets you there.' });
+  if (!t.workoutDone) priorities.push({ icon:'💪', text: 'Log a workout. Even 20 min of movement improves insulin sensitivity for 24 hours.' });
+  if (!hasBreakfast) priorities.push({ icon:'🌅', text: 'Eat breakfast. Breaks overnight fast, restores liver glycogen, improves cognitive performance.' });
+  if (cp > 120) priorities.push({ icon:'⚠', text: 'Reduce calories by '+(t.calories-calTarget)+' kcal. Swap refined carbs for high-fibre vegetables.' });
+  const top3 = priorities.slice(0, 3);
+
+  // ─── RENDER ───
   el.innerHTML = `
-    <div style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:2px">Coach Insights</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:16px">Your progress snapshot</div>
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--text);margin-bottom:2px">Your Coach</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:16px;letter-spacing:0.5px">Personalised guidance based on your data & nutrition science</div>
 
+    <!-- Score trend -->
     ${recent7.length > 0 ? `
     <div class="card" style="margin-bottom:12px">
-      <div class="card-label">7-Day Score Trend</div>
-      <div style="display:flex;align-items:flex-end;gap:4px;height:56px;margin-bottom:10px">${scoreBar}</div>
-      <div style="display:flex;justify-content:space-between">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div>
-          <div style="font-size:24px;font-weight:800;color:${avgScore >= 75 ? 'var(--accent)' : avgScore >= 55 ? 'var(--yellow)' : 'var(--red)'}">${avgScore}</div>
-          <div style="font-size:9px;color:var(--text3)">avg / 100</div>
+          <div style="font-size:24px;font-weight:800;color:${avgScore>=75?'var(--accent)':avgScore>=55?'var(--yellow)':'var(--red)'}">${avgScore}<span style="font-size:12px;color:var(--text3)"> / 100</span></div>
+          <div style="font-size:9px;color:var(--text3)">7-day avg score</div>
         </div>
-        ${recent7.length >= 2 ? `<div style="text-align:right">
-          <div style="font-size:18px;font-weight:700;color:${trend >= 0 ? 'var(--accent2)' : 'var(--red)'}">${trend >= 0 ? '↑' : '↓'} ${Math.abs(trend)} pts</div>
-          <div style="font-size:9px;color:var(--text3)">week change</div>
-        </div>` : ''}
+        ${recent7.length >= 2 ? `<div style="text-align:right"><div style="font-size:18px;font-weight:700;color:${trend>=0?'var(--accent2)':'var(--red)'}">${trend>=0?'↑':'↓'} ${Math.abs(trend)} pts</div><div style="font-size:9px;color:var(--text3)">week trend</div></div>` : ''}
       </div>
-    </div>` : `
-    <div class="card" style="margin-bottom:12px">
-      <div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">Score history appears here after your first full day</div>
-    </div>`}
+      <div style="display:flex;align-items:flex-end;gap:4px;height:50px">${scoreBar}</div>
+    </div>` : `<div class="card" style="margin-bottom:12px"><div style="font-size:11px;color:var(--text3);text-align:center;padding:12px 0">Score trend appears after your first full day</div></div>`}
 
-    <div class="card" style="margin-bottom:12px">
-      <div class="card-label">Today's Nutrition & Activity</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
-        <div style="text-align:center">
-          <div style="font-size:20px;font-weight:800;color:${proteinPct >= 80 ? 'var(--accent)' : proteinPct >= 50 ? 'var(--yellow)' : 'var(--red)'}">${proteinPct}%</div>
-          <div style="font-size:9px;color:var(--text3)">Protein</div>
-          <div style="font-size:9px;color:var(--text2)">${t.protein}g / ${S.settings.proteinTarget}g</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:20px;font-weight:800;color:${caloriePct >= 80 && caloriePct <= 120 ? 'var(--accent)' : 'var(--yellow)'}">${caloriePct}%</div>
-          <div style="font-size:9px;color:var(--text3)">Calories</div>
-          <div style="font-size:9px;color:var(--text2)">${t.calories} / ${S.settings.calorieTarget}</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:20px;font-weight:800;color:${stepsPct >= 80 ? 'var(--accent)' : stepsPct >= 50 ? 'var(--yellow)' : 'var(--red)'}">${stepsPct}%</div>
-          <div style="font-size:9px;color:var(--text3)">Steps</div>
-          <div style="font-size:9px;color:var(--text2)">${t.steps.toLocaleString()} / ${S.settings.stepsTarget.toLocaleString()}</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <div style="flex:1;background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:18px;font-weight:800;color:var(--accent3)">${S.streak}</div>
-          <div style="font-size:9px;color:var(--text3)">day streak</div>
-        </div>
-        <div style="flex:1;background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:18px;font-weight:800;color:${t.workoutDone && t.workoutType !== 'none' ? 'var(--accent2)' : 'var(--text3)'}">${t.workoutDone && t.workoutType !== 'none' ? '✓' : '—'}</div>
-          <div style="font-size:9px;color:var(--text3)">workout</div>
-        </div>
-        <div style="flex:1;background:var(--surface2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-size:18px;font-weight:800;color:var(--text)">${t.meals.length}</div>
-          <div style="font-size:9px;color:var(--text3)">meals</div>
-        </div>
-      </div>
-    </div>
+    <!-- Overall picture -->
+    ${card('Overall Picture', '🗺', overallTips + (top3.length > 0 ? `
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:10px;color:var(--text2);font-weight:700;margin-bottom:6px">TOP PRIORITIES FOR TODAY</div>
+        ${top3.map(p2 => `<div style="display:flex;gap:8px;padding:5px 0;font-size:11px;color:var(--text2)"><span>${p2.icon}</span><span>${p2.text}</span></div>`).join('')}
+      </div>` : ''), 'var(--accent2)')}
 
-    ${bm.length > 0 ? `
-    <div class="card" style="margin-bottom:12px">
-      <div class="card-label">Body Composition</div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-size:24px;font-weight:800;color:var(--text)">${latestWeight ? latestWeight + ' kg' : '—'}</div>
-          <div style="font-size:10px;color:var(--text3)">current weight</div>
-        </div>
-        ${weightDelta !== null ? `<div style="text-align:right">
-          <div style="font-size:18px;font-weight:700;color:${parseFloat(weightDelta) < 0 ? 'var(--accent2)' : parseFloat(weightDelta) > 0.2 ? 'var(--yellow)' : 'var(--text2)'}">${parseFloat(weightDelta) > 0 ? '+' : ''}${weightDelta} kg</div>
-          <div style="font-size:9px;color:var(--text3)">vs last entry</div>
-        </div>` : ''}
-      </div>
-      ${bm[bm.length-1].fat ? `<div style="margin-top:8px;font-size:11px;color:var(--text2)">Body fat: <strong>${bm[bm.length-1].fat}%</strong>${bm[bm.length-1].muscle ? ` &nbsp;·&nbsp; Muscle: <strong>${bm[bm.length-1].muscle}%</strong>` : ''}</div>` : ''}
-    </div>` : ''}
+    <!-- Dietary guidance -->
+    ${card('Dietary Guidance', '🥗', dietTips || '<div style="font-size:11px;color:var(--text3);padding:8px 0">Log your meals to get personalised dietary guidance.</div>', 'var(--accent)')}
 
-    <div class="card" style="margin-bottom:12px">
-      <div class="card-label">Recommendations</div>
-      ${recs.map(r => `
-      <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-        <div style="font-size:20px;line-height:1.2;flex-shrink:0">${r.icon}</div>
-        <div style="font-size:11px;color:${priColor[r.pri]};line-height:1.5">${r.text}</div>
-      </div>`).join('')}
-    </div>
+    <!-- Activity guidance -->
+    ${card('Activity Guidance', '⚡', actTips || '<div style="font-size:11px;color:var(--text3);padding:8px 0">Log activity to see personalised movement guidance.</div>', 'var(--accent3)')}
+
+    <!-- Workout guidance -->
+    ${card('Workout Guidance', '🏋', workoutTips || '<div style="font-size:11px;color:var(--text3);padding:8px 0">Log a workout to see exercise guidance and recovery tips.</div>', 'var(--yellow)')}
+
+    <!-- Momentum & emotional -->
+    ${card('Momentum & Mindset', '🧠', momentumTips || '<div style="font-size:11px;color:var(--text3);padding:8px 0">Keep going — consistency is everything.</div>', 'var(--accent2)')}
+
+    <!-- Biochemistry fact of the day -->
+    ${card('Nutrition Science', '📖', `<div style="font-size:11px;color:var(--text2);line-height:1.7">
+      ${_coachNutritionFact()}
+    </div>`, 'var(--text3)')}
   `;
+}
+
+// ── Rotating nutrition science facts (from applied biochemistry & dietetics) ──
+function _coachNutritionFact() {
+  const facts = [
+    '<strong>Protein & Amino Acids:</strong> Dietary protein is digested to amino acids, which serve as building blocks for muscle, enzymes, hormones, and antibodies. The liver deaminates excess amino acids — nitrogen is excreted as urea. This is why very high protein intake requires adequate water intake to support kidney function.',
+    '<strong>Glycaemic Index (GI):</strong> High-GI foods (white rice, white bread) cause rapid blood glucose spikes, triggering large insulin responses. Low-GI foods (oats, lentils, sweet potato) provide sustained energy and better satiety. Combining high-GI foods with protein/fat/fibre lowers the glycaemic impact of a meal.',
+    '<strong>Iron Absorption:</strong> Haem iron (from meat) has 15-35% absorption rate. Non-haem iron (from lentils, spinach) has 2-10% absorption. Vitamin C consumed simultaneously increases non-haem iron absorption up to 6×. Tea/coffee consumed with meals reduces iron absorption by 60-90% due to tannins.',
+    '<strong>Essential Fatty Acids:</strong> Omega-3 (ALA, EPA, DHA) cannot be synthesised by the body. EPA/DHA from fatty fish reduce inflammation, support brain function, and lower triglycerides. ALA from flaxseeds, walnuts, and chia is converted to EPA/DHA at only 5-10% efficiency. If you don\'t eat fish, consider algae-based DHA supplementation.',
+    '<strong>Muscle Protein Synthesis (MPS):</strong> Leucine, an essential amino acid, is the primary trigger for MPS. It acts as a signalling molecule activating the mTOR pathway. For maximum MPS stimulation, consume 2.5-3g leucine per meal — equivalent to ~25-30g high-quality protein (eggs, meat, dairy, whey).',
+    '<strong>Fibre & Gut Health:</strong> Soluble fibre (oats, barley, apples) forms a gel in the gut, slowing digestion and reducing cholesterol absorption. Insoluble fibre (whole wheat, vegetables) adds bulk to stools and accelerates transit time, reducing colon cancer risk. Prebiotics (garlic, onion, asparagus) feed beneficial gut bacteria that produce short-chain fatty acids supporting immune function.',
+    '<strong>Calcium & Bone Health:</strong> 99% of body calcium is in bones/teeth. Calcium absorption requires vitamin D (from sunlight/fortified foods). Calcium intake without adequate Vit D is largely wasted. Peak bone mass is achieved by age 25 — adequate calcium and weight-bearing exercise in youth is critical for lifelong bone health.',
+    '<strong>Vitamin B12:</strong> Found only in animal products (meat, fish, dairy, eggs). Vegans and strict vegetarians are at high risk of B12 deficiency, which causes megaloblastic anaemia and irreversible neurological damage. Regular supplementation or fortified foods are essential for plant-based eaters.',
+    '<strong>Energy Systems:</strong> During the first 10 seconds of intense exercise, the ATP-PC (phosphocreatine) system is used. From 10s-2 min, anaerobic glycolysis dominates. Beyond 2 minutes, aerobic oxidation of carbohydrates and fats takes over. This is why sprinting burns glycogen while long slow exercise burns fat.',
+    '<strong>Cortisol & Stress:</strong> Chronic stress elevates cortisol, which promotes gluconeogenesis (breakdown of muscle for glucose), fat storage in the abdomen, and suppresses immunity. This is why stress management (sleep, meditation, social connection) is as important as diet and exercise for body composition.',
+  ];
+  const idx = new Date().getDate() % facts.length;
+  return facts[idx];
 }
 
 // ─── THEME ───
@@ -4512,6 +4931,24 @@ function renderScoreList(container, items) {
 //  ACTIONS
 // ═══════════════════════════════════════════
 
+let _currentMealType = 'Breakfast';
+function selectMealType(type) {
+  _currentMealType = type;
+  document.querySelectorAll('#mealTypeChips .w-chip').forEach(b => {
+    b.classList.toggle('w-chip-sel', b.dataset.mt === type);
+  });
+}
+// Auto-select meal type based on current hour
+(function autoSelectMealType() {
+  const h = new Date().getHours();
+  if (h < 9)       selectMealType('Breakfast');
+  else if (h < 11) selectMealType('Morning Snack');
+  else if (h < 14) selectMealType('Lunch');
+  else if (h < 17) selectMealType('Afternoon Snack');
+  else if (h < 21) selectMealType('Dinner');
+  else             selectMealType('Late Night');
+})();
+
 function logFood() {
   const name = document.getElementById('foodName').value.trim();
   const cal = parseInt(document.getElementById('foodCals').value) || 0;
@@ -4519,7 +4956,7 @@ function logFood() {
 
   if (!name || !cal) { showToast('Enter food name and calories'); return; }
 
-  S.today.meals.push({ name, cal, prot });
+  S.today.meals.push({ name, cal, prot, mealType: _currentMealType });
   S.today.calories = Math.round(S.today.calories + cal);
   S.today.protein = r1(S.today.protein + prot);
 
@@ -4529,26 +4966,34 @@ function logFood() {
 
   save(S);
   renderAll();
-  showToast(`+${cal} kcal · +${prot}g protein`);
+  showToast(`+${cal} kcal added to ${_currentMealType}`);
 }
 
 function quickAdd(idx) {
   const f = QUICK_FOODS[idx];
-  S.today.meals.push({ name: f.name, cal: f.cal, prot: f.prot });
+  S.today.meals.push({ name: f.name, cal: f.cal, prot: f.prot, mealType: _currentMealType });
   S.today.calories = Math.round(S.today.calories + f.cal);
   S.today.protein = r1(S.today.protein + f.prot);
   save(S);
   renderAll();
-  showToast(`${f.name} added`);
+  showToast(`${f.name} → ${_currentMealType}`);
 }
 
 function deleteMeal(idx) {
-  const meal = S.today.meals[idx];
-  S.today.calories = Math.round(S.today.calories - meal.cal);
-  S.today.protein = r1(S.today.protein - meal.prot);
-  if (S.today.calories < 0) S.today.calories = 0;
-  if (S.today.protein < 0) S.today.protein = 0;
-  S.today.meals.splice(idx, 1);
+  const viewState = getViewState();
+  const target = viewState || S.today;
+  const meal = target.meals[idx];
+  if (!meal) return;
+  target.calories = Math.max(0, Math.round(target.calories - meal.cal));
+  target.protein  = Math.max(0, r1(target.protein - meal.prot));
+  target.meals.splice(idx, 1);
+  // If editing a past day, save to history
+  if (!isViewingToday() && viewState) {
+    if (!S.history) S.history = [];
+    const hi = S.history.findIndex(h => h.date === viewState.date);
+    if (hi >= 0) S.history[hi] = viewState;
+    else S.history.push(viewState);
+  }
   save(S);
   renderAll();
   showToast('Meal removed');
@@ -4605,9 +5050,24 @@ function saveBodyMetrics() {
 
   if (!w && !f && !m && !v) { showToast('Enter at least one metric'); return; }
 
-  const entry = { date: todayStr(), weight: w||null, fat: f||null, muscle: m||null, visceral: v||null };
-  S.bodyMetrics.push(entry);
-  S.lastBodyMetrics = entry;
+  const targetDate = _viewDate || todayStr();
+  // Merge with existing entry for that date if one exists (to preserve OCR-scanned fields)
+  const existingIdx = S.bodyMetrics.findIndex(e => e.date === targetDate);
+  const base = existingIdx >= 0 ? { ...S.bodyMetrics[existingIdx] } : { date: targetDate };
+  if (w) base.weight   = w;
+  if (f) base.fat      = f;
+  if (m) base.muscle   = m;
+  if (v) base.visceral = v;
+
+  if (existingIdx >= 0) {
+    S.bodyMetrics[existingIdx] = base;
+  } else {
+    S.bodyMetrics.push(base);
+    // Keep sorted by date
+    S.bodyMetrics.sort((a, b) => parseDateStr(a.date) - parseDateStr(b.date));
+  }
+
+  if (isViewingToday()) S.lastBodyMetrics = base;
 
   document.getElementById('bodyWeight').value = '';
   document.getElementById('bodyFat').value = '';
@@ -4616,7 +5076,7 @@ function saveBodyMetrics() {
 
   save(S);
   renderAll();
-  showToast('Body metrics saved');
+  showToast(isViewingToday() ? 'Body metrics saved' : `Body metrics saved for ${targetDate}`);
 }
 
 function autoScore() {
@@ -5027,14 +5487,14 @@ async function aiEstimate() {
 function confirmAiLog() {
   if (!pendingAiMeal) return;
   const meal = { ...pendingAiMeal };
-  S.today.meals.push({ name: meal.name, cal: meal.cal, prot: meal.prot });
+  S.today.meals.push({ name: meal.name, cal: meal.cal, prot: meal.prot, mealType: _currentMealType });
   S.today.calories = Math.round(S.today.calories + meal.cal);
   S.today.protein = r1(S.today.protein + meal.prot);
   save(S); renderAll();
   document.getElementById('aiFood').value = '';
   document.getElementById('aiResult').style.display = 'none';
   pendingAiMeal = null;
-  showToast(`+${meal.cal} kcal logged via AI ✓`);
+  showToast(`+${meal.cal} kcal → ${_currentMealType} ✓`);
 }
 
 // ═══════════════════════════════════════════
@@ -5643,12 +6103,12 @@ function showPhotoFallback(hint) {
 }
 
 function logPhotoMeal(meal) {
-  S.today.meals.push({ name: meal.name + ' (photo)', cal: meal.cal, prot: meal.prot });
+  S.today.meals.push({ name: meal.name + ' (photo)', cal: meal.cal, prot: meal.prot, mealType: _currentMealType });
   S.today.calories = Math.round(S.today.calories + meal.cal);
   S.today.protein  += meal.prot;
   save(S); renderAll();
   document.getElementById('photoEstimateResult').style.display = 'none';
-  showToast(`+${meal.cal} kcal logged from photo ✓`);
+  showToast(`+${meal.cal} kcal → ${_currentMealType} ✓`);
 }
 
 function showApiKeyPrompt() {
@@ -5795,20 +6255,25 @@ function renderGymExerciseSelect() {
 
 function addGymSet() {
   const ex     = document.getElementById('gymExerciseSelect').value;
-  const weight = parseFloat(document.getElementById('gymWeight').value) || 0;
+  const sets   = parseInt(document.getElementById('gymSets').value) || 1;
   const reps   = parseInt(document.getElementById('gymReps').value) || 0;
+  const weight = parseFloat(document.getElementById('gymWeight').value) || 0;
   if (!ex)   { showToast('Select an exercise'); return; }
-  if (reps < 1) { showToast('Enter reps'); return; }
+  if (reps < 1) { showToast('Enter number of reps'); return; }
 
   if (!_wGymSession[ex]) _wGymSession[ex] = [];
-  _wGymSession[ex].push({ weight, reps });
+  // Add each set
+  for (let i = 0; i < sets; i++) {
+    _wGymSession[ex].push({ weight, reps });
+  }
 
-  // Reset inputs for next set
+  // Clear reps and weight but keep sets count
   document.getElementById('gymWeight').value = '';
   document.getElementById('gymReps').value   = '';
 
   renderGymSessionLog();
-  showToast(`Set added: ${ex} ${weight > 0 ? weight + 'kg × ' : ''}${reps} reps`);
+  const label = `${sets} set${sets>1?'s':''} × ${reps} reps${weight > 0 ? ' @ ' + weight + ' kg' : ' (BW)'}`;
+  showToast(`${ex}: ${label} added ✓`);
 }
 
 function renderGymSessionLog() {
@@ -5825,17 +6290,68 @@ function renderGymSessionLog() {
   entries.innerHTML = exNames.map(ex => {
     const sets = _wGymSession[ex];
     totalSets += sets.length;
-    return `<div style="margin-bottom:8px">
-      <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px">${ex}</div>
-      ${sets.map((s, i) => `
+    // Group consecutive identical sets
+    const grouped = [];
+    sets.forEach((s, i) => {
+      const last = grouped[grouped.length - 1];
+      if (last && last.weight === s.weight && last.reps === s.reps) {
+        last.count++;
+        last.indices.push(i);
+      } else {
+        grouped.push({ weight: s.weight, reps: s.reps, count: 1, startIdx: i, indices: [i] });
+      }
+    });
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div style="font-size:11px;font-weight:700;color:var(--text)">${ex}</div>
+        <div style="font-size:10px;color:var(--accent)">${sets.length} set${sets.length!==1?'s':''}</div>
+      </div>
+      ${grouped.map(g => `
         <div class="gym-set-row">
-          <span style="color:var(--text3)">Set ${i + 1}</span>
-          <span style="color:var(--text)">${s.weight > 0 ? s.weight + ' kg' : 'bodyweight'} × ${s.reps} reps</span>
-          <button onclick="removeGymSet('${ex}',${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
+          <span style="color:var(--text2);font-weight:600">${g.count} × ${g.reps} reps</span>
+          <span style="color:var(--text3)">@ ${g.weight > 0 ? g.weight + ' kg' : 'bodyweight'}</span>
+          <button onclick="removeGymExercise('${ex}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0 4px">✕</button>
         </div>`).join('')}
     </div>`;
   }).join('');
   if (count) count.textContent = `(${totalSets} set${totalSets !== 1 ? 's' : ''})`;
+}
+
+function removeGymExercise(ex) {
+  delete _wGymSession[ex];
+  renderGymSessionLog();
+}
+
+// ── Workout screenshot ──
+let _workoutScreenshotDataUrl = null;
+function uploadWorkoutScreenshot(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _workoutScreenshotDataUrl = e.target.result;
+    document.getElementById('workoutScreenshotImg').src = e.target.result;
+    document.getElementById('workoutScreenshotPreview').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+function saveWorkoutScreenshot() {
+  if (!_workoutScreenshotDataUrl) return;
+  const note = document.getElementById('workoutScreenshotNote').value.trim();
+  if (!S.today.workoutLog) S.today.workoutLog = [];
+  S.today.workoutLog.push({
+    type: 'screenshot',
+    imageDataUrl: _workoutScreenshotDataUrl,
+    note,
+    ts: Date.now()
+  });
+  S.today.workoutDone = true;
+  save(S);
+  document.getElementById('workoutScreenshotPreview').style.display = 'none';
+  document.getElementById('workoutScreenshotNote').value = '';
+  _workoutScreenshotDataUrl = null;
+  renderAll();
+  showToast('Workout screenshot saved ✓');
 }
 
 function removeGymSet(ex, idx) {
@@ -5873,28 +6389,43 @@ function finishGymSession() {
 }
 
 function deleteWorkoutEntry(idx) {
-  if (!S.today.workoutLog) return;
-  const entry = S.today.workoutLog[idx];
-  S.today.workoutLog.splice(idx, 1);
-  // Subtract burned cals if cardio
-  if (entry && entry.type === 'cardio' && entry.calories) {
+  const viewState = getViewState();
+  const target = viewState || S.today;
+  if (!target.workoutLog) return;
+
+  const entry = target.workoutLog[idx];
+  target.workoutLog.splice(idx, 1);
+
+  // Subtract burned cals if cardio (today only)
+  if (isViewingToday() && entry && entry.type === 'cardio' && entry.calories) {
     S.today.activityCals = Math.max(0, (S.today.activityCals || 0) - entry.calories);
   }
-  if (S.today.workoutLog.length === 0) {
+  if (isViewingToday() && target.workoutLog.length === 0) {
     S.today.workoutDone = false;
     S.today.workoutType = null;
   }
+
+  // Persist back to history if editing a past day
+  if (!isViewingToday() && viewState) {
+    if (!S.history) S.history = [];
+    const hi = S.history.findIndex(h => h.date === viewState.date);
+    if (hi >= 0) S.history[hi] = viewState;
+    else S.history.push(viewState);
+  }
+
   save(S);
   renderAll();
 }
 
 function renderWorkout() {
+  updateDateNavUI('workout');
   const logDiv = document.getElementById('workoutLogEntries');
   if (!logDiv) return;
 
-  const entries = (S.today && S.today.workoutLog) || [];
+  const viewState = getViewState();
+  const entries = (viewState && viewState.workoutLog) || [];
   if (entries.length === 0) {
-    logDiv.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:16px 0">No workouts logged today</div>';
+    logDiv.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:16px 0">No workouts logged${isViewingToday() ? ' today' : ''}</div>`;
     const burnEl = document.getElementById('workoutTotalBurn');
     if (burnEl) burnEl.textContent = '';
     return;
@@ -5918,16 +6449,33 @@ function renderWorkout() {
       </div>`;
     } else if (e.type === 'gym') {
       const exNames = (e.exercises || []).map(ex => ex.name).join(', ');
-      return `<div class="workout-log-row">
-        <div style="font-size:24px;flex-shrink:0">🏋</div>
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:700;color:var(--text)">Gym Session</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:2px">${e.totalSets} sets · ${exNames}</div>
+      const detail = (e.exercises || []).map(ex =>
+        `${ex.name}: ${ex.sets.length} set${ex.sets.length!==1?'s':''} × ${ex.sets[0]?.reps||'?'} reps @ ${ex.sets[0]?.weight||0} kg`
+      ).join(' · ');
+      return `<div class="workout-log-row" style="flex-direction:column;align-items:flex-start">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+          <div style="display:flex;gap:10px;align-items:center">
+            <span style="font-size:22px">🏋</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--text)">Gym Session</div>
+              <div style="font-size:10px;color:var(--text3)">${e.totalSets} total sets · ${(e.exercises||[]).length} exercise${(e.exercises||[]).length!==1?'s':''}</div>
+            </div>
+          </div>
+          <button onclick="deleteWorkoutEntry(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">remove</button>
         </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:11px;color:var(--text2)">weights</div>
-          <button onclick="deleteWorkoutEntry(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:0">remove</button>
+        ${detail ? `<div style="font-size:10px;color:var(--text2);margin-top:6px;padding-left:32px;line-height:1.6">${detail}</div>` : ''}
+      </div>`;
+    } else if (e.type === 'screenshot') {
+      return `<div class="workout-log-row" style="flex-direction:column;align-items:flex-start">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;margin-bottom:8px">
+          <div style="display:flex;gap:10px;align-items:center">
+            <span style="font-size:22px">📸</span>
+            <div style="font-size:12px;font-weight:700;color:var(--text)">Workout Screenshot</div>
+          </div>
+          <button onclick="deleteWorkoutEntry(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">remove</button>
         </div>
+        <img src="${e.imageDataUrl}" style="width:100%;border-radius:8px;max-height:180px;object-fit:cover"/>
+        ${e.note ? `<div style="font-size:10px;color:var(--text2);margin-top:6px">${e.note}</div>` : ''}
       </div>`;
     }
     return '';
