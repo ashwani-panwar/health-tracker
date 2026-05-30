@@ -2253,7 +2253,8 @@ async function loginWithEmail() {
 }
 
 function loginWithGoogle() {
-  document.getElementById('loginError').style.display = 'none';
+  const errEl = document.getElementById('loginError');
+  if (errEl) errEl.style.display = 'none';
   const btn = document.getElementById('googleSignInBtn');
 
   // ── Android WebView path ──────────────────────────────────────────
@@ -2266,22 +2267,33 @@ function loginWithGoogle() {
     try {
       window.AndroidGoogleAuth.signIn();
     } catch (e) {
-      showLoginError('Native sign-in unavailable: ' + e.message);
+      showLoginError('Sign-in error: ' + e.message);
       if (btn) { btn.disabled = false; btn.textContent = 'Continue with Google'; }
     }
     return;
   }
 
+  // ── Guard: Firebase must be loaded for the web path ───────────────
+  if (typeof firebase === 'undefined' || typeof _auth === 'undefined' || !_auth) {
+    showLoginError('App not fully loaded. Pull down to refresh the page.');
+    return;
+  }
+
   // ── Web browser path ─────────────────────────────────────────────
   if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
-  const provider = new firebase.auth.GoogleAuthProvider();
-  provider.addScope('profile');
-  provider.addScope('email');
-  provider.setCustomParameters({ prompt: 'select_account' });
-  _auth.signInWithRedirect(provider).catch(err => {
-    showLoginError(_authCodeToMsg(err));
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('profile');
+    provider.addScope('email');
+    provider.setCustomParameters({ prompt: 'select_account' });
+    _auth.signInWithRedirect(provider).catch(err => {
+      showLoginError(_authCodeToMsg(err));
+      if (btn) { btn.disabled = false; btn.textContent = 'Continue with Google'; }
+    });
+  } catch (e) {
+    showLoginError('Sign-in unavailable: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = 'Continue with Google'; }
-  });
+  }
 }
 
 // ── Callbacks from Android native Google Sign-In bridge ────────────
@@ -2311,32 +2323,35 @@ window._nativeGoogleSignInError = function(errMsg) {
 function initFirebaseAuth() {
   // The login screen (with Google button) is visible by default in the HTML.
   // All we do here is watch for a signed-in user and switch to the main app.
-  // If Firebase fails to load entirely (CDN blocked, JS error), the login
-  // button stays visible so the user can still tap it.
   try {
-    if (!window._auth) return; // Firebase SDK didn't load — login button already visible
+    // _auth is declared as `const` so it is NOT on window — use typeof check
+    if (typeof _auth === 'undefined' || !_auth) {
+      console.warn('Firebase Auth not initialised — login button already visible');
+      return;
+    }
     _auth.onAuthStateChanged(user => {
       if (user) {
-        // Capture Drive access token from redirect result (best-effort, background)
-        _auth.getRedirectResult()
-          .then(result => {
-            if (result && result.credential && result.credential.accessToken) {
-              const token = result.credential.accessToken;
-              if (window.S && S.settings) {
-                S.settings.driveToken       = token;
-                S.settings.driveTokenExpiry = Date.now() + 3600 * 1000;
-                save(S);
+        // Best-effort: capture Drive access token from redirect result
+        try {
+          _auth.getRedirectResult()
+            .then(result => {
+              if (result && result.credential && result.credential.accessToken) {
+                const token = result.credential.accessToken;
+                if (window.S && S.settings) {
+                  S.settings.driveToken       = token;
+                  S.settings.driveTokenExpiry = Date.now() + 3600 * 1000;
+                  save(S);
+                }
               }
-            }
-          })
-          .catch(() => {});
+            })
+            .catch(() => {});
+        } catch (_) {}
         showMainApp();
       }
-      // No user → login screen is already showing, nothing to do
+      // No user → login screen already showing
     });
   } catch (e) {
     console.error('initFirebaseAuth error:', e);
-    // Login screen is already visible — user can still sign in
   }
 }
 
