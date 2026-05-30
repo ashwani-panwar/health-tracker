@@ -1116,15 +1116,8 @@
 <div id="loginScreen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:100000;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto">
   <div style="width:100%;max-width:360px;text-align:center">
 
-    <!-- Loading state — shown while Firebase restores auth -->
-    <div id="loginLoading" style="display:flex;flex-direction:column;align-items:center;gap:18px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:32px;color:var(--accent);letter-spacing:-1px">VITAL<span style="color:var(--text)">CORE</span></div>
-      <div class="login-spinner"></div>
-      <div style="font-size:11px;color:var(--text3);letter-spacing:0.5px">Checking sign-in…</div>
-    </div>
-
-    <!-- Sign-in content — revealed only after Firebase confirms no user -->
-    <div id="loginContent" style="display:none">
+    <!-- Login content — always visible; Firebase hides this screen when a session is found -->
+    <div id="loginContent">
       <!-- Logo -->
       <div style="margin-bottom:8px">
         <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="26" cy="26" r="24" stroke="#c8ff00" stroke-width="1.5" opacity="0.25"/><path d="M6 26h7l5-12 6 24 6-18 4 9 3-3H46" stroke="#c8ff00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2316,62 +2309,46 @@ window._nativeGoogleSignInError = function(errMsg) {
 // which works without redirects or deep-link handling.
 
 function initFirebaseAuth() {
-  // Show loading spinner immediately — loginScreen starts visible but with
-  // spinner only. The Google sign-in button is revealed only after Firebase
-  // confirms there is no current session, preventing a flash for returning users.
-  document.getElementById('loginLoading').style.display = 'flex';
-  document.getElementById('loginContent').style.display = 'none';
-
-  // ── Safety timeout: if Firebase doesn't respond in 4 s, reveal login button ──
-  // Protects fresh installs and network-restricted environments where
-  // onAuthStateChanged might hang waiting for getRedirectResult to resolve.
-  const _authSafetyTimer = setTimeout(() => {
-    if (document.getElementById('loginLoading').style.display !== 'none') {
-      console.warn('Firebase auth timeout — forcing login screen');
-      showLoginScreenUI();
-    }
-  }, 4000);
-
-  // ── Auth-state listener: single source of truth ──────────────────
-  // We register this FIRST so it fires as soon as Firebase knows the state.
-  // getRedirectResult is called inside the user-detected branch so it never
-  // blocks onAuthStateChanged from firing for fresh (no-session) installs.
-  _auth.onAuthStateChanged(user => {
-    clearTimeout(_authSafetyTimer);
-    if (user) {
-      // Background: capture Drive access token from the redirect result if present
-      _auth.getRedirectResult()
-        .then(result => {
-          if (result && result.credential && result.credential.accessToken) {
-            const token = result.credential.accessToken;
-            if (window.S && S.settings) {
-              S.settings.driveToken       = token;
-              S.settings.driveTokenExpiry = Date.now() + 3600 * 1000;
-              save(S);
+  // The login screen (with Google button) is visible by default in the HTML.
+  // All we do here is watch for a signed-in user and switch to the main app.
+  // If Firebase fails to load entirely (CDN blocked, JS error), the login
+  // button stays visible so the user can still tap it.
+  try {
+    if (!window._auth) return; // Firebase SDK didn't load — login button already visible
+    _auth.onAuthStateChanged(user => {
+      if (user) {
+        // Capture Drive access token from redirect result (best-effort, background)
+        _auth.getRedirectResult()
+          .then(result => {
+            if (result && result.credential && result.credential.accessToken) {
+              const token = result.credential.accessToken;
+              if (window.S && S.settings) {
+                S.settings.driveToken       = token;
+                S.settings.driveTokenExpiry = Date.now() + 3600 * 1000;
+                save(S);
+              }
             }
-          }
-        })
-        .catch(() => {}); // ignore — Drive token capture is best-effort
-      showMainApp();
-    } else {
-      // No current session — reveal the sign-in button
-      showLoginScreenUI();
-    }
-  });
+          })
+          .catch(() => {});
+        showMainApp();
+      }
+      // No user → login screen is already showing, nothing to do
+    });
+  } catch (e) {
+    console.error('initFirebaseAuth error:', e);
+    // Login screen is already visible — user can still sign in
+  }
 }
 
 function showMainApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = '';
-  setTimeout(updateLoggedInUser, 300); // give auth a moment to populate currentUser
+  setTimeout(updateLoggedInUser, 300);
 }
 
 function showLoginScreenUI() {
   document.getElementById('app').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
-  // Hide spinner, reveal Google button
-  document.getElementById('loginLoading').style.display = 'none';
-  document.getElementById('loginContent').style.display = 'block';
 }
 
 function signOut() {
