@@ -2322,35 +2322,39 @@ function initFirebaseAuth() {
   document.getElementById('loginLoading').style.display = 'flex';
   document.getElementById('loginContent').style.display = 'none';
 
-  // ── Handle the return from a web Google sign-in redirect ──────────
-  // Must be called before onAuthStateChanged so the user object is
-  // available when the listener fires.
-  _auth.getRedirectResult()
-    .then(result => {
-      if (!result || !result.user) return;
-      // Also capture Drive access token if scope was granted
-      if (result.credential && result.credential.accessToken) {
-        const token = result.credential.accessToken;
-        if (window.S && S.settings) {
-          S.settings.driveToken       = token;
-          S.settings.driveTokenExpiry = Date.now() + 3600 * 1000;
-          save(S);
-        }
-      }
-    })
-    .catch(err => {
-      if (err.code !== 'auth/no-auth-event') {
-        console.warn('getRedirectResult:', err.code, err.message);
-        showLoginError(_authCodeToMsg(err));
-      }
-    });
+  // ── Safety timeout: if Firebase doesn't respond in 4 s, reveal login button ──
+  // Protects fresh installs and network-restricted environments where
+  // onAuthStateChanged might hang waiting for getRedirectResult to resolve.
+  const _authSafetyTimer = setTimeout(() => {
+    if (document.getElementById('loginLoading').style.display !== 'none') {
+      console.warn('Firebase auth timeout — forcing login screen');
+      showLoginScreenUI();
+    }
+  }, 4000);
 
   // ── Auth-state listener: single source of truth ──────────────────
+  // We register this FIRST so it fires as soon as Firebase knows the state.
+  // getRedirectResult is called inside the user-detected branch so it never
+  // blocks onAuthStateChanged from firing for fresh (no-session) installs.
   _auth.onAuthStateChanged(user => {
+    clearTimeout(_authSafetyTimer);
     if (user) {
+      // Background: capture Drive access token from the redirect result if present
+      _auth.getRedirectResult()
+        .then(result => {
+          if (result && result.credential && result.credential.accessToken) {
+            const token = result.credential.accessToken;
+            if (window.S && S.settings) {
+              S.settings.driveToken       = token;
+              S.settings.driveTokenExpiry = Date.now() + 3600 * 1000;
+              save(S);
+            }
+          }
+        })
+        .catch(() => {}); // ignore — Drive token capture is best-effort
       showMainApp();
     } else {
-      // No current session — show the sign-in button now
+      // No current session — reveal the sign-in button
       showLoginScreenUI();
     }
   });
