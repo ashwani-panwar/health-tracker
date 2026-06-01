@@ -2490,6 +2490,18 @@ function showMainApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = '';
   setTimeout(updateLoggedInUser, 300);
+  setTimeout(() => {
+    initReminders();
+    const tk = S.settings && S.settings.gfitToken;
+    const ex = S.settings && S.settings.gfitTokenExpiry;
+    if (tk) {
+      if (ex && Date.now() < ex) {
+        syncGoogleFit(tk);
+      } else if (window.isNativeApp && typeof vitalCoreNative !== 'undefined' && vitalCoreNative.requestFitnessToken) {
+        vitalCoreNative.requestFitnessToken();
+      }
+    }
+  }, 1500);
 }
 
 function showLoginScreenUI() {
@@ -2800,6 +2812,10 @@ function startMidnightScheduler() {
       const ls = S.settings && S.settings.gfitLastSync;
       if (tk && ex && Date.now() < ex && (!ls || Date.now() - ls > 300000)) {
         syncGoogleFit(tk);
+      } else if (tk && (!ex || Date.now() >= ex) &&
+                 window.isNativeApp && typeof vitalCoreNative !== 'undefined' &&
+                 vitalCoreNative.requestFitnessToken) {
+        vitalCoreNative.requestFitnessToken();
       }
     }
   });
