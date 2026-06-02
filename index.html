@@ -978,6 +978,205 @@
 
     .fade-in { animation: fadeIn 0.3s ease forwards; }
 
+    /* ── New animation keyframes ── */
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes popIn {
+      0%   { transform: scale(0.6); opacity: 0; }
+      70%  { transform: scale(1.08); }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+    @keyframes glowPulse {
+      0%, 100% { box-shadow: 0 0 0px var(--accent); }
+      50%      { box-shadow: 0 0 16px var(--accent); }
+    }
+    @keyframes ripple {
+      from { transform: scale(0); opacity: 0.5; }
+      to   { transform: scale(3); opacity: 0; }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    @keyframes bounceIn {
+      0%   { transform: scale(0.8) translateY(10px); opacity: 0; }
+      60%  { transform: scale(1.05) translateY(-4px); }
+      80%  { transform: scale(0.97); }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    @keyframes celebrationBurst {
+      0%   { transform: scale(0) rotate(0deg); opacity: 1; }
+      100% { transform: scale(2.5) rotate(180deg); opacity: 0; }
+    }
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .slide-up   { animation: slideInUp 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+    .pop-in     { animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+    .bounce-in  { animation: bounceIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+    /* Staggered animation for lists */
+    .stagger-item { opacity: 0; animation: slideInUp 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+    /* Press/tap effect */
+    .btn { position: relative; overflow: hidden; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary:active { box-shadow: 0 0 20px rgba(200,255,0,0.4); }
+
+    /* Card hover / press */
+    .card { transition: transform 0.15s, box-shadow 0.15s; }
+    .card:active { transform: scale(0.99); }
+
+    /* Nav icon bounce */
+    .nav-item.active .nav-icon {
+      transform: scale(1.2);
+      filter: drop-shadow(0 0 4px var(--accent));
+    }
+
+    /* ── Drag & Drop for meal items ── */
+    .meal-item {
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      position: relative;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+    .meal-item:active { cursor: grabbing; }
+    .meal-item.dragging {
+      opacity: 0.4;
+      transform: scale(0.97);
+    }
+    .meal-item.drag-over-above { border-top: 2px solid var(--accent) !important; }
+    .meal-item.drag-over-below { border-bottom: 2px solid var(--accent) !important; }
+    .drag-handle {
+      color: var(--text3);
+      font-size: 13px;
+      margin-right: 8px;
+      cursor: grab;
+      flex-shrink: 0;
+      padding: 2px;
+      line-height: 1;
+    }
+    .meal-type-drop-zone {
+      border: 2px dashed transparent;
+      border-radius: var(--radius-sm);
+      transition: border-color 0.2s, background 0.2s;
+      min-height: 44px;
+      padding: 2px;
+    }
+    .meal-type-drop-zone.drop-active {
+      border-color: var(--accent);
+      background: rgba(200,255,0,0.05);
+    }
+    .meal-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      padding: 4px 0;
+      cursor: pointer;
+    }
+    .meal-section-header:hover .meal-type-label { color: var(--accent); }
+
+    /* ── Scan item editing rows ── */
+    .scan-item-edit {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideInLeft 0.25s ease forwards;
+    }
+    .scan-item-name {
+      flex: 1;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .scan-item-portion { font-size: 9px; color: var(--text3); }
+    .scan-num-input {
+      width: 56px;
+      padding: 4px 6px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .scan-num-input:focus { outline: none; border-color: var(--accent); }
+    .scan-item-remove {
+      background: none;
+      border: none;
+      color: var(--red);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .scan-item-remove:hover { background: rgba(255,68,102,0.1); }
+    .scan-totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0 4px;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+    .scan-total-val {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      line-height: 1;
+    }
+    .scan-total-unit { font-size: 9px; color: var(--text3); margin-top: 2px; }
+
+    /* ── Interactive notification prompt ── */
+    .notif-prompt {
+      background: linear-gradient(135deg, rgba(200,255,0,0.08), rgba(0,255,200,0.05));
+      border: 1px solid rgba(200,255,0,0.2);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: bounceIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    .notif-emoji { font-size: 28px; flex-shrink: 0; }
+    .notif-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .notif-action-btn {
+      padding: 6px 14px; border: none; border-radius: 20px;
+      font-size: 11px; font-weight: 700; cursor: pointer;
+      font-family: 'JetBrains Mono', monospace; transition: all 0.2s;
+    }
+    .notif-action-done {
+      background: var(--accent); color: #000;
+    }
+    .notif-action-done:active { transform: scale(0.94); box-shadow: 0 0 16px rgba(200,255,0,0.5); }
+    .notif-action-snooze {
+      background: var(--surface2); color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+
+    /* ── Ripple button effect ── */
+    .ripple-effect {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      animation: ripple 0.5s linear forwards;
+      pointer-events: none;
+    }
+
     /* Switch */
     .toggle-row {
       display: flex;
@@ -2496,12 +2695,14 @@ function showMainApp() {
     const ex = S.settings && S.settings.gfitTokenExpiry;
     if (tk) {
       if (ex && Date.now() < ex) {
+        // Token still valid — sync directly (autoSyncGfit will also fire, prevent dup by skipping if auto fired within 5s)
         syncGoogleFit(tk);
       } else if (window.isNativeApp && typeof vitalCoreNative !== 'undefined' && vitalCoreNative.requestFitnessToken) {
+        // Token expired on native — silently get a fresh one via the Google SDK (no popup shown to user)
         vitalCoreNative.requestFitnessToken();
       }
     }
-  }, 1500);
+  }, 800);
 }
 
 function showLoginScreenUI() {
@@ -2839,7 +3040,13 @@ function showTab(tab) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const tabEl = document.getElementById('tab-' + tab);
-  if (tabEl) tabEl.classList.add('active');
+  if (tabEl) {
+    tabEl.classList.add('active');
+    // Animate page in
+    tabEl.style.animation = 'none';
+    tabEl.offsetHeight; // force reflow
+    tabEl.style.animation = 'slideInUp 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards';
+  }
   const tabs = document.querySelectorAll('.nav-tab');
   tabs.forEach(t => { if (t.getAttribute('onclick')?.includes(tab)) t.classList.add('active'); });
   currentTab = tab;
@@ -3189,24 +3396,50 @@ function renderFoodLog() {
       if (!groups[t]) groups[t] = [];
       groups[t].push({ ...m, idx: i });
     });
+    const allTypes = [...MEAL_ORDER, ...Object.keys(groups).filter(k => !MEAL_ORDER.includes(k))];
     const orderedKeys = [...MEAL_ORDER.filter(k => groups[k]), ...Object.keys(groups).filter(k => !MEAL_ORDER.includes(k))];
-    mealsList.innerHTML = orderedKeys.map(type => {
+    mealsList.innerHTML = orderedKeys.map((type, si) => {
       const items = groups[type];
       const typeCal  = items.reduce((s, m) => s + Math.round(m.cal), 0);
       const typeProt = items.reduce((s, m) => s + (m.prot || 0), 0);
-      return `<div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.5px">${MEAL_ICONS[type]||'🍴'} ${type.toUpperCase()}</div>
+      return `<div class="meal-section stagger-item" style="margin-bottom:10px;animation-delay:${si*0.05}s" data-meal-section="${type}">
+        <div class="meal-section-header">
+          <div class="meal-type-label" style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.5px">${MEAL_ICONS[type]||'🍴'} ${type.toUpperCase()}</div>
           <div style="font-size:9px;color:var(--text3)">${typeCal} kcal · ${r1(typeProt)}g prot</div>
         </div>
+        <div class="meal-type-drop-zone" data-drop-section="${type}" ondragover="mealDragOver(event)" ondrop="mealDrop(event,'${type}')" ondragleave="mealDragLeave(event)">
         ${items.map(m => `
-          <div class="meal-item fade-in">
+          <div class="meal-item stagger-item" draggable="true" data-meal-idx="${m.idx}"
+               style="animation-delay:${si*0.05+0.05}s"
+               ondragstart="mealDragStart(event,${m.idx})"
+               ondragend="mealDragEnd(event)"
+               ontouchstart="mealTouchStart(event,${m.idx})"
+               ontouchmove="mealTouchMove(event)"
+               ontouchend="mealTouchEnd(event,'${type}')">
+            <span class="drag-handle">⠿</span>
             <div class="meal-name">${m.name}</div>
             <div class="meal-macros">${Math.round(m.cal)} kcal<br/>${r1(m.prot)}g prot</div>
             <button class="meal-delete" onclick="deleteMeal(${m.idx})">✕</button>
           </div>`).join('')}
+        </div>
       </div>`;
     }).join('<div class="divider" style="margin:4px 0"></div>');
+
+    // Show empty drop zones for all meal types not currently used (so user can drop into them)
+    const unusedTypes = allTypes.filter(k => !groups[k]);
+    if (unusedTypes.length && isViewingToday()) {
+      const dropSection = document.createElement('div');
+      dropSection.style.cssText = 'margin-top:8px';
+      dropSection.innerHTML = `<div style="font-size:9px;color:var(--text3);margin-bottom:6px;letter-spacing:0.5px">DROP INTO ANOTHER MEAL</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${unusedTypes.map(type =>
+          `<div class="meal-type-drop-zone" data-drop-section="${type}"
+                style="padding:6px 10px;border:1px dashed var(--border2);border-radius:8px;font-size:9px;color:var(--text3);min-height:unset"
+                ondragover="mealDragOver(event)" ondrop="mealDrop(event,'${type}')" ondragleave="mealDragLeave(event)">
+            ${MEAL_ICONS[type]||'🍴'} ${type}
+          </div>`).join('')}
+        </div>`;
+      mealsList.appendChild(dropSection);
+    }
   }
 
   const vs = getViewState() || S.today;
@@ -4986,12 +5219,17 @@ async function syncGoogleFit(token) {
 
   try {
     // ── Aggregate: steps + calories + active minutes ──
+    // Include both the generic dataTypeName AND the merged/estimated derived sources
+    // to capture data from all fitness apps and the Google Health Platform
     const aggResp = await fetch('https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         aggregateBy: [
-          { dataTypeName: 'com.google.step_count.delta' },
+          {
+            dataTypeName: 'com.google.step_count.delta',
+            dataSourceId: 'derived:com.google.step_count.delta:com.google.android.gms:merge_step_deltas'
+          },
           { dataTypeName: 'com.google.calories.expended' },
           { dataTypeName: 'com.google.active_minutes' },
         ],
@@ -5002,33 +5240,65 @@ async function syncGoogleFit(token) {
     });
 
     if (aggResp.status === 401) {
-      delete S.settings.gfitToken;
+      // Token expired — clear and try native re-auth on Android
+      if (S.settings) delete S.settings.gfitToken;
       save(S);
       renderGfitStatus();
-      if (el) el.innerHTML = '<div class="insight-box">⚠ Session expired. Please sign in again.</div>';
-      showToast('Session expired — please reconnect');
+      if (el) el.innerHTML = '<div class="insight-box">⚠ Session expired. Reconnecting...</div>';
+      if (window.isNativeApp && typeof vitalCoreNative !== 'undefined' && vitalCoreNative.requestFitnessToken) {
+        setTimeout(() => vitalCoreNative.requestFitnessToken(), 800);
+      } else {
+        showToast('Session expired — please reconnect');
+      }
       return;
     }
 
     const aggData = await aggResp.json();
     let steps = 0, calories = 0, activeMin = 0;
 
-    // Use dataset index to match aggregateBy order: [0]=steps [1]=calories [2]=activeMin
-    // Also try both intVal and fpVal since the field present varies by source/version.
+    // Parse aggregated buckets — try intVal first, then fpVal
     for (const bucket of aggData.bucket || []) {
       const datasets = bucket.dataset || [];
       for (let di = 0; di < datasets.length; di++) {
         const ds = datasets[di];
         for (const pt of ds.point || []) {
-          const v = pt.value?.[0];
-          if (!v) continue;
-          const iv = v.intVal != null ? v.intVal : 0;
-          const fv = v.fpVal  != null ? v.fpVal  : 0;
-          if (di === 0) steps    += iv || fv;
-          if (di === 1) calories += fv || iv;
-          if (di === 2) activeMin+= iv || fv;
+          for (const v of (pt.value || [])) {
+            const numVal = (v.intVal != null && v.intVal !== 0) ? v.intVal
+                         : (v.fpVal  != null && v.fpVal  !== 0) ? Math.round(v.fpVal)
+                         : 0;
+            if (di === 0) steps    += numVal;
+            if (di === 1) calories += numVal;
+            if (di === 2) activeMin+= numVal;
+          }
         }
       }
+    }
+
+    // ── Fallback: try estimated_steps if merge returned 0 ──
+    if (steps === 0) {
+      try {
+        const estResp = await fetch('https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            aggregateBy: [{ dataTypeName: 'com.google.step_count.delta' }],
+            bucketByTime: { durationMillis: 86400000 },
+            startTimeMillis: startMs,
+            endTimeMillis: now
+          })
+        });
+        const estData = await estResp.json();
+        for (const bucket of estData.bucket || []) {
+          for (const ds of bucket.dataset || []) {
+            for (const pt of ds.point || []) {
+              for (const v of (pt.value || [])) {
+                const n = (v.intVal != null) ? v.intVal : Math.round(v.fpVal || 0);
+                steps += n;
+              }
+            }
+          }
+        }
+      } catch(e2) { /* ignore fallback errors */ }
     }
 
     // ── Sessions: workout list ──
@@ -5049,7 +5319,6 @@ async function syncGoogleFit(token) {
     if (sessions.length > 0) {
       const latest = sessions[sessions.length - 1];
       S.today.workoutDone     = true;
-      // Activity types: 1=biking, 7=walking, 8=running, 80=strength, 97=conditioning
       const strengthTypes = [80, 97, 93, 94, 99, 46];
       S.today.workoutType     = strengthTypes.includes(latest.type) ? 'Strength' : 'Cardio';
       S.today.workoutDuration = latest.duration;
@@ -5060,13 +5329,13 @@ async function syncGoogleFit(token) {
     renderAll();
 
     // ── Show result ──
-    if (el) el.innerHTML = `<div class="ocr-extracted">
+    if (el) el.innerHTML = `<div class="ocr-extracted slide-up">
       <div style="font-size:10px;font-weight:700;color:#34A853;margin-bottom:8px">✓ GOOGLE FIT SYNCED</div>
       ${steps    > 0 ? `<div class="ocr-row"><span>Steps</span><span class="ocr-val" style="color:#4285F4">${steps.toLocaleString()}</span></div>` : ''}
       ${calories > 0 ? `<div class="ocr-row"><span>Calories Burned</span><span class="ocr-val" style="color:#EA4335">${Math.round(calories)} kcal</span></div>` : ''}
       ${activeMin> 0 ? `<div class="ocr-row"><span>Active Minutes</span><span class="ocr-val" style="color:#FBBC04">${activeMin} min</span></div>` : ''}
       ${sessions.length > 0 ? `<div class="ocr-row"><span>Workouts Today</span><span class="ocr-val" style="color:#34A853">${sessions.length} session(s)</span></div>` : ''}
-      ${steps === 0 && calories === 0 ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">No activity recorded yet today.</div>' : ''}
+      ${steps === 0 && calories === 0 ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">No activity recorded yet today — walk around and sync again!</div>' : ''}
     </div>`;
     showToast(`Synced ✓  ${steps.toLocaleString()} steps today`);
 
@@ -5220,6 +5489,114 @@ function deleteMeal(idx) {
   save(S);
   renderAll();
   showToast('Meal removed');
+}
+
+// ── Meal drag-and-drop between meal periods ──────────────────────────
+let _dragMealIdx = null;
+let _touchDragIdx = null;
+
+function mealDragStart(event, idx) {
+  _dragMealIdx = idx;
+  event.dataTransfer.effectAllowed = 'move';
+  event.currentTarget.classList.add('dragging');
+  // Slight delay so drag image is set before opacity change
+  setTimeout(() => { if (event.currentTarget) event.currentTarget.style.opacity = '0.4'; }, 0);
+}
+
+function mealDragEnd(event) {
+  _dragMealIdx = null;
+  event.currentTarget.classList.remove('dragging');
+  event.currentTarget.style.opacity = '';
+  document.querySelectorAll('.meal-type-drop-zone').forEach(z => z.classList.remove('drop-active'));
+  document.querySelectorAll('.meal-item').forEach(i => {
+    i.classList.remove('drag-over-above', 'drag-over-below');
+  });
+}
+
+function mealDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  event.currentTarget.classList.add('drop-active');
+}
+
+function mealDragLeave(event) {
+  event.currentTarget.classList.remove('drop-active');
+}
+
+function mealDrop(event, newType) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drop-active');
+  if (_dragMealIdx == null) return;
+  _moveMealToType(_dragMealIdx, newType);
+  _dragMealIdx = null;
+}
+
+// Touch-based drag (mobile)
+let _touchStartY = 0;
+let _touchGhost = null;
+
+function mealTouchStart(event, idx) {
+  _touchDragIdx = idx;
+  _touchStartY = event.touches[0].clientY;
+  const el = event.currentTarget;
+  // Create ghost
+  _touchGhost = el.cloneNode(true);
+  _touchGhost.style.cssText = `position:fixed;left:10px;right:10px;z-index:9999;opacity:0.85;
+    transform:scale(1.03);pointer-events:none;border:1px solid var(--accent);border-radius:10px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.5);background:var(--surface);padding:10px;`;
+  _touchGhost.style.top = el.getBoundingClientRect().top + 'px';
+  document.body.appendChild(_touchGhost);
+  el.style.opacity = '0.3';
+}
+
+function mealTouchMove(event) {
+  if (_touchDragIdx == null || !_touchGhost) return;
+  event.preventDefault();
+  const y = event.touches[0].clientY;
+  _touchGhost.style.top = (y - 30) + 'px';
+  // Highlight drop zones
+  document.querySelectorAll('.meal-type-drop-zone').forEach(z => {
+    const r = z.getBoundingClientRect();
+    if (y >= r.top && y <= r.bottom) {
+      z.classList.add('drop-active');
+    } else {
+      z.classList.remove('drop-active');
+    }
+  });
+}
+
+function mealTouchEnd(event) {
+  if (_touchDragIdx == null) return;
+  // Find which drop zone the touch ended in
+  const y = event.changedTouches[0].clientY;
+  let dropped = false;
+  document.querySelectorAll('.meal-type-drop-zone').forEach(z => {
+    z.classList.remove('drop-active');
+    const r = z.getBoundingClientRect();
+    if (!dropped && y >= r.top && y <= r.bottom) {
+      const newType = z.dataset.dropSection;
+      if (newType) { _moveMealToType(_touchDragIdx, newType); dropped = true; }
+    }
+  });
+  if (_touchGhost) { _touchGhost.remove(); _touchGhost = null; }
+  document.querySelectorAll('.meal-item').forEach(i => i.style.opacity = '');
+  _touchDragIdx = null;
+}
+
+function _moveMealToType(idx, newType) {
+  const viewState = getViewState();
+  const target = viewState || S.today;
+  const meal = target.meals[idx];
+  if (!meal || meal.mealType === newType) return;
+  meal.mealType = newType;
+  if (!isViewingToday() && viewState) {
+    if (!S.history) S.history = [];
+    const hi = S.history.findIndex(h => h.date === viewState.date);
+    if (hi >= 0) S.history[hi] = viewState; else S.history.push(viewState);
+  }
+  save(S);
+  renderFoodLog();
+  showToast(`Moved to ${newType} ✓`);
 }
 
 // ── Habit celebration (Atomic Habits: make the reward visible) ──────
@@ -5726,10 +6103,33 @@ let toastTimer;
 function showToast(msg, duration) {
   const t = document.getElementById('toast');
   t.textContent = msg;
+  // Celebrate toasts get a pop-in bounce
+  if (msg.includes('✓') || msg.includes('🔥') || msg.includes('🏆') || msg.includes('⚡') || msg.includes('🌱')) {
+    t.style.animation = 'none';
+    t.offsetHeight;
+    t.style.animation = 'popIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards';
+  } else {
+    t.style.animation = '';
+  }
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), duration || 2200);
 }
+
+// ── Button ripple effect ─────────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.btn');
+  if (!btn) return;
+  const r = document.createElement('span');
+  r.className = 'ripple-effect';
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  r.style.width = r.style.height = size + 'px';
+  r.style.left = (e.clientX - rect.left - size / 2) + 'px';
+  r.style.top  = (e.clientY - rect.top  - size / 2) + 'px';
+  btn.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+});
 
 // ═══════════════════════════════════════════
 //  INIT
@@ -6402,28 +6802,110 @@ Use realistic values. Typical meal is 300-700 kcal total.`;
   }
 }
 
+// Editable scan items state
+let _scanItems = [];
+
 function showPhotoResult(items, el, method) {
   if (!items || !items.length) { el.innerHTML = showPhotoFallback('No food detected'); return; }
-  const totalCal  = items.reduce((s,i) => s + (i.cal||0), 0);
-  const totalProt = Math.round(items.reduce((s,i) => s + (i.prot||0), 0) * 10) / 10;
-  const meal = { name: items.map(i => i.food).join(' + '), cal: totalCal, prot: totalProt };
+  _scanItems = items.map((i, idx) => ({ ...i, id: idx }));
+  renderScanItems(el, method);
+}
+
+function renderScanItems(el, method) {
+  if (!el) el = document.getElementById('photoEstimateResult');
+  const savedMethod = method || el.dataset.method || 'AI';
+  el.dataset.method = savedMethod;
+  const totalCal  = _scanItems.reduce((s,i) => s + (parseInt(i.cal)||0), 0);
+  const totalProt = Math.round(_scanItems.reduce((s,i) => s + (parseFloat(i.prot)||0), 0) * 10) / 10;
 
   let html = `<div class="ocr-extracted">
-    <div style="font-size:10px;color:var(--accent3);margin-bottom:8px">✓ DETECTED BY ${method}</div>`;
-  html += items.map(i =>
-    `<div class="ocr-row">
-      <span>${i.food} <small style="color:var(--text3)">${i.portion||''}</small></span>
-      <span class="ocr-val">${i.cal}kcal · ${i.prot}g</span>
+    <div style="font-size:10px;color:var(--accent3);margin-bottom:10px;letter-spacing:0.5px">✓ ${_scanItems.length} ITEM${_scanItems.length>1?'S':''} DETECTED BY ${savedMethod}</div>`;
+
+  html += _scanItems.map((item, i) =>
+    `<div class="scan-item-edit" id="scan-item-${item.id}">
+      <div style="flex:1;min-width:0">
+        <div class="scan-item-name">${item.food}</div>
+        ${item.portion ? `<div class="scan-item-portion">${item.portion}</div>` : ''}
+        <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+          <div style="font-size:9px;color:var(--text3)">kcal</div>
+          <input class="scan-num-input" type="number" value="${item.cal||0}"
+                 oninput="updateScanItem(${item.id},'cal',this.value)" />
+          <div style="font-size:9px;color:var(--text3)">prot g</div>
+          <input class="scan-num-input" type="number" value="${item.prot||0}" step="0.1"
+                 oninput="updateScanItem(${item.id},'prot',this.value)" />
+        </div>
+      </div>
+      <button class="scan-item-remove" onclick="removeScanItem(${item.id})" title="Remove">✕</button>
     </div>`
   ).join('');
-  html += `<div style="display:flex;justify-content:space-between;padding:8px 0;margin-top:4px;border-top:1px solid var(--border)">
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:20px">${totalCal} kcal</div>
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:20px;color:var(--accent)">${totalProt}g prot</div>
-  </div></div>
-  <button class="btn btn-primary" style="width:100%;margin-top:8px"
-    onclick='logPhotoMeal(${JSON.stringify(meal).replace(/'/g,"&#39;")})'>✓ Log This Meal</button>
-  <div style="font-size:9px;color:var(--text3);margin-top:5px">AI estimates — adjust manually if needed</div>`;
+
+  html += `<div class="scan-totals-row">
+    <div><div class="scan-total-val">${totalCal}</div><div class="scan-total-unit">TOTAL KCAL</div></div>
+    <div style="text-align:right"><div class="scan-total-val" style="color:var(--accent)">${totalProt}g</div><div class="scan-total-unit">TOTAL PROTEIN</div></div>
+  </div></div>`;
+
+  if (_scanItems.length > 1) {
+    html += `<button class="btn btn-primary" style="width:100%;margin-top:8px"
+      onclick="logAllScanItems()">✓ Log All ${_scanItems.length} Items</button>`;
+  }
+  if (_scanItems.length > 0) {
+    html += `<button class="btn" style="width:100%;margin-top:6px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2)"
+      onclick="logScanItemsAsCombined()">Log as Single Combined Meal</button>`;
+  }
+  html += `<div style="font-size:9px;color:var(--text3);margin-top:6px">Edit any value above — AI estimates may vary</div>`;
   el.innerHTML = html;
+}
+
+function updateScanItem(id, field, val) {
+  const item = _scanItems.find(i => i.id === id);
+  if (!item) return;
+  item[field] = field === 'prot' ? parseFloat(val)||0 : parseInt(val)||0;
+  // Update totals display without full re-render
+  const el = document.getElementById('photoEstimateResult');
+  const totalCal  = _scanItems.reduce((s,i) => s + (parseInt(i.cal)||0), 0);
+  const totalProt = Math.round(_scanItems.reduce((s,i) => s + (parseFloat(i.prot)||0), 0) * 10) / 10;
+  const rows = el.querySelectorAll('.scan-total-val');
+  if (rows[0]) rows[0].textContent = totalCal;
+  if (rows[1]) rows[1].textContent = totalProt + 'g';
+}
+
+function removeScanItem(id) {
+  _scanItems = _scanItems.filter(i => i.id !== id);
+  const el = document.getElementById('photoEstimateResult');
+  renderScanItems(el);
+  if (_scanItems.length === 0) { el.style.display = 'none'; return; }
+  showToast('Item removed');
+}
+
+function logAllScanItems() {
+  if (!_scanItems.length) return;
+  _scanItems.forEach(item => {
+    S.today.meals.push({ name: item.food + ' (photo)', cal: parseInt(item.cal)||0, prot: parseFloat(item.prot)||0, mealType: _currentMealType });
+    S.today.calories = Math.round(S.today.calories + (parseInt(item.cal)||0));
+    S.today.protein  = r1(S.today.protein + (parseFloat(item.prot)||0));
+  });
+  _saveMealTypeRecent(_currentMealType);
+  save(S); renderAll();
+  document.getElementById('photoEstimateResult').style.display = 'none';
+  triggerHabitCelebration();
+  showToast(`${_scanItems.length} items logged → ${_currentMealType} ✓`);
+  _scanItems = [];
+}
+
+function logScanItemsAsCombined() {
+  if (!_scanItems.length) return;
+  const totalCal  = _scanItems.reduce((s,i) => s + (parseInt(i.cal)||0), 0);
+  const totalProt = Math.round(_scanItems.reduce((s,i) => s + (parseFloat(i.prot)||0), 0) * 10) / 10;
+  const name = _scanItems.map(i => i.food).join(' + ') + ' (photo)';
+  S.today.meals.push({ name, cal: totalCal, prot: totalProt, mealType: _currentMealType });
+  S.today.calories = Math.round(S.today.calories + totalCal);
+  S.today.protein  = r1(S.today.protein + totalProt);
+  _saveMealTypeRecent(_currentMealType);
+  save(S); renderAll();
+  document.getElementById('photoEstimateResult').style.display = 'none';
+  triggerHabitCelebration();
+  showToast(`+${totalCal} kcal → ${_currentMealType} ✓`);
+  _scanItems = [];
 }
 
 function showPhotoFallback(hint) {
@@ -6440,8 +6922,10 @@ function showPhotoFallback(hint) {
 function logPhotoMeal(meal) {
   S.today.meals.push({ name: meal.name + ' (photo)', cal: meal.cal, prot: meal.prot, mealType: _currentMealType });
   S.today.calories = Math.round(S.today.calories + meal.cal);
-  S.today.protein  += meal.prot;
+  S.today.protein  = r1(S.today.protein + meal.prot);
+  _saveMealTypeRecent(_currentMealType);
   save(S); renderAll();
+  triggerHabitCelebration();
   document.getElementById('photoEstimateResult').style.display = 'none';
   showToast(`+${meal.cal} kcal → ${_currentMealType} ✓`);
 }
@@ -6853,20 +7337,25 @@ setTimeout(initReminders, 3000); // schedule reminders after app settles
     if (Date.now() < expiry) {
       setTimeout(() => syncGoogleFit(token), 2000);
     } else {
-      // Token expired — silent re-auth via iframe on mobile, popup on desktop
-      const clientId = GFIT_HARDCODED_ID || (S.settings && S.settings.gfitClientId);
-      if (clientId) {
-        const mob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (mob) {
-          setTimeout(() => silentRefreshGfitIframe(clientId).then(({ token: t, expiresIn: ex }) => {
-            if (!S.settings) S.settings = defaultState().settings;
-            S.settings.gfitToken = t;
-            S.settings.gfitTokenExpiry = Date.now() + ex * 1000;
-            save(S);
-            syncGoogleFit(t);
-          }).catch(() => {}), 1500);
-        } else {
-          setTimeout(() => launchGfitOAuth(clientId, true), 1500);
+      // Token expired — on native Android use the SDK bridge (no iframe needed)
+      if (window.isNativeApp && typeof vitalCoreNative !== 'undefined' && vitalCoreNative.requestFitnessToken) {
+        setTimeout(() => vitalCoreNative.requestFitnessToken(), 1500);
+      } else {
+        // Web fallback: silent iframe re-auth
+        const clientId = GFIT_HARDCODED_ID || (S.settings && S.settings.gfitClientId);
+        if (clientId) {
+          const mob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          if (mob) {
+            setTimeout(() => silentRefreshGfitIframe(clientId).then(({ token: t, expiresIn: ex }) => {
+              if (!S.settings) S.settings = defaultState().settings;
+              S.settings.gfitToken = t;
+              S.settings.gfitTokenExpiry = Date.now() + ex * 1000;
+              save(S);
+              syncGoogleFit(t);
+            }).catch(() => {}), 1500);
+          } else {
+            setTimeout(() => launchGfitOAuth(clientId, true), 1500);
+          }
         }
       }
     }
@@ -6876,6 +7365,9 @@ setTimeout(initReminders, 3000); // schedule reminders after app settles
     const tk = S.settings && S.settings.gfitToken;
     const ex = S.settings && S.settings.gfitTokenExpiry;
     if (tk && ex && Date.now() < ex) syncGoogleFit(tk);
+    else if (tk && window.isNativeApp && typeof vitalCoreNative !== 'undefined' && vitalCoreNative.requestFitnessToken) {
+      vitalCoreNative.requestFitnessToken();
+    }
   }, 30 * 60 * 1000);
 })();
 
